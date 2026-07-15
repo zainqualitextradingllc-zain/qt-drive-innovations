@@ -12,16 +12,16 @@ class Settings(BaseSettings):
 
     # LLM
     llm_provider: str = "openai"  # openai | gemini
-    openai_api_key: str = "sk-your-openai-api-key-here"
+    openai_api_key: str = "your_openai_api_key_here"
     openai_model: str = "gpt-4o-mini"
     openai_embedding_model: str = "text-embedding-3-small"
-    gemini_api_key: str = "your-gemini-api-key-here"
+    gemini_api_key: str = "your_gemini_api_key_here"
     gemini_model: str = "gemini-2.0-flash"
 
     # Supabase
-    supabase_url: str = "https://your-project-ref.supabase.co"
-    supabase_anon_key: str = "your-supabase-anon-key-here"
-    supabase_service_role_key: str = "your-supabase-service-role-key-here"
+    supabase_url: str = "your_supabase_project_url_here"
+    supabase_anon_key: str = "your_supabase_anon_key_here"
+    supabase_service_role_key: str = "your_supabase_service_role_key_here"
     database_url: str = ""
 
     # Server
@@ -33,25 +33,41 @@ class Settings(BaseSettings):
     max_clarifying_questions: int = 4
     use_mock_llm: bool = False
 
+    @staticmethod
+    def _is_placeholder(value: str) -> bool:
+        """True for empty/template secrets that must never be treated as live keys."""
+        if not value or not str(value).strip():
+            return True
+        v = str(value).strip().lower()
+        if v.startswith("sk-your"):
+            return True
+        if v.startswith("your_") or v.startswith("your-") or v.startswith("your "):
+            return True
+        if "placeholder" in v or "example" in v or "changeme" in v:
+            return True
+        if "your_project" in v or "project-ref" in v or "project_ref" in v:
+            return True
+        if v.endswith("_here") or v.endswith("-here"):
+            return True
+        return False
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def openai_configured(self) -> bool:
-        key = self.openai_api_key
-        return bool(key) and not key.startswith("sk-your-") and "placeholder" not in key.lower()
+        return not self._is_placeholder(self.openai_api_key)
 
     @property
     def gemini_configured(self) -> bool:
-        key = self.gemini_api_key
-        return bool(key) and not key.startswith("your-") and "placeholder" not in key.lower()
+        return not self._is_placeholder(self.gemini_api_key)
 
     @property
     def supabase_configured(self) -> bool:
-        return (
-            "your-project-ref" not in self.supabase_url
-            and not self.supabase_service_role_key.startswith("your-")
+        return not (
+            self._is_placeholder(self.supabase_url)
+            or self._is_placeholder(self.supabase_service_role_key)
         )
 
 
