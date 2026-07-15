@@ -1,0 +1,55 @@
+{
+  "brand": {
+    "name": "QT Drive Innovations",
+    "tagline": "Diagnostic Assistant",
+    "parent": "Qualitex Trading LLC"
+  },
+  "nav": {
+    "diagnostics": "Car Diagnostics",
+    "skillsSoon": "More skills soon"
+  },
+  "language": {
+    "ja": "日本語",
+    "en": "English",
+    "label": "Language"
+  },
+  "chat": {
+    "welcomeTitle": "Vehicle diagnostics, done carefully",
+    "welcomeBody": "Describe what’s happening with your car. I ask one focused question at a time, then share a probable diagnosis with severity and cost range.",
+    "placeholder": "Describe what’s happening…",
+    "send": "Send",
+    "sending": "Thinking…",
+    "vinCta": "Decode VIN",
+    "vinSkip": "Skip VIN",
+    "vinPlaceholder": "17-character VIN (optional)",
+    "newSession": "New session",
+    "you": "You",
+    "assistant": "QT Assistant"
+  },
+  "severity": {
+    "safe_to_drive": "Safe to drive",
+    "caution": "Caution",
+    "stop_immediately": "Stop immediately"
+  },
+  "diagnosis": {
+    "title": "Diagnosis",
+    "causes": "Likely causes",
+    "cost": "Estimated repair cost",
+    "nextAction": "Recommended next action",
+    "confidence": "Confidence",
+    "obd": "Related codes"
+  },
+  "vehicle": {
+    "label": "Vehicle",
+    "unknown": "Vehicle not set",
+    "vin": "VIN"
+  },
+  "footer": {
+    "disclaimer": "AI estimate for information only — not a substitute for professional inspection.",
+    "copyright": "© Qualitex Trading LLC · QT Drive Innovations"
+  },
+  "errors": {
+    "network": "Could not reach the diagnostic service. Is the backend running on port 8000?",
+    "generic": "Something went wrong. Please try again."
+  }
+}

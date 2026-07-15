@@ -1,0 +1,55 @@
+{
+  "brand": {
+    "name": "QT Drive Innovations",
+    "tagline": "診断アシスタント",
+    "parent": "Qualitex Trading LLC"
+  },
+  "nav": {
+    "diagnostics": "自動車診断",
+    "skillsSoon": "他スキル準備中"
+  },
+  "language": {
+    "ja": "日本語",
+    "en": "English",
+    "label": "言語"
+  },
+  "chat": {
+    "welcomeTitle": "慎重に進める車両診断",
+    "welcomeBody": "車の状態を教えてください。一度に一つの質問で整理し、確信度・重大度・費用目安付きの推定診断をお伝えします。",
+    "placeholder": "車の症状を入力…",
+    "send": "送信",
+    "sending": "考え中…",
+    "vinCta": "VINを解析",
+    "vinSkip": "VINをスキップ",
+    "vinPlaceholder": "17桁VIN（任意）",
+    "newSession": "新しい会話",
+    "you": "あなた",
+    "assistant": "QTアシスタント"
+  },
+  "severity": {
+    "safe_to_drive": "運転可能",
+    "caution": "注意",
+    "stop_immediately": "直ちに停止"
+  },
+  "diagnosis": {
+    "title": "診断結果",
+    "causes": "考えられる原因",
+    "cost": "修理費用の目安",
+    "nextAction": "推奨される次の行動",
+    "confidence": "確信度",
+    "obd": "関連コード"
+  },
+  "vehicle": {
+    "label": "車両",
+    "unknown": "車両未設定",
+    "vin": "VIN"
+  },
+  "footer": {
+    "disclaimer": "本結果は情報提供を目的としたAI推定であり、専門整備の代替ではありません。",
+    "copyright": "© Qualitex Trading LLC · QT Drive Innovations"
+  },
+  "errors": {
+    "network": "診断サービスに接続できません。バックエンド（ポート8000）が起動しているか確認してください。",
+    "generic": "エラーが発生しました。もう一度お試しください。"
+  }
+}
