@@ -18,6 +18,23 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Allow WordPress (qualitex-trading.com) to embed this app in an iframe.
+  // Modern browsers use CSP frame-ancestors; X-Frame-Options ALLOW-FROM is obsolete
+  // and is omitted so it cannot conflict with CSP.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value:
+              "frame-ancestors 'self' https://qualitex-trading.com https://www.qualitex-trading.com https://*.qualitex-trading.com;",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);
