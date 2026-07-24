@@ -71,6 +71,88 @@ FALLBACK_KNOWLEDGE: list[dict[str, Any]] = [
         "estimated_cost_jpy_min": 20000,
         "estimated_cost_jpy_max": 60000,
         "tags": ["grinding", "brakes", "ブレーキ", "キーキー", "ゴリゴリ", "きしむ"],
+        "recommended_action_en": "Visit mechanic for brake inspection",
+        "recommended_action_ja": "ブレーキ点検のため整備士に相談してください",
+    },
+    {
+        "obd_code": None,
+        "entry_type": "symptom",
+        "title_en": "AC blows warm air only",
+        "title_ja": "エアコンから冷たい風が出ない",
+        "description_en": "Cabin air never gets cold; compressor may not engage.",
+        "description_ja": "車内が冷えない。コンプレッサーが作動しない可能性。",
+        "likely_causes_en": [
+            "Low refrigerant / leak",
+            "Failed AC compressor clutch",
+            "Bad pressure switch",
+        ],
+        "likely_causes_ja": ["冷媒不足・漏れ", "ACコンプレッサー不良", "プレッシャースイッチ不良"],
+        "severity_en": "Safe to drive - comfort issue",
+        "severity_ja": "運転可能 - 快適性の問題",
+        "estimated_cost_usd_min": 80,
+        "estimated_cost_usd_max": 1200,
+        "estimated_cost_jpy_min": 10000,
+        "estimated_cost_jpy_max": 150000,
+        "tags": ["ac", "air conditioning", "warm", "エアコン", "冷えない"],
+        "recommended_action_en": "Have AC system pressure tested for leaks",
+        "recommended_action_ja": "冷媒圧力と漏れ点検を依頼",
+    },
+    {
+        "obd_code": None,
+        "entry_type": "symptom",
+        "title_en": "Car pulls to one side when braking",
+        "title_ja": "ブレーキ時に車が片側へ流れる",
+        "description_en": "Vehicle yaws left or right under braking.",
+        "description_ja": "制動時に左右どちらかへ車が流れる。",
+        "likely_causes_en": ["Uneven pad wear", "Stuck caliper slide pin", "Collapsed brake hose"],
+        "likely_causes_ja": ["パッド片減り", "キャリパー固着", "ブレーキホース潰れ"],
+        "severity_en": "Caution - inspect soon",
+        "severity_ja": "注意 - 早めに点検",
+        "estimated_cost_usd_min": 120,
+        "estimated_cost_usd_max": 500,
+        "estimated_cost_jpy_min": 15000,
+        "estimated_cost_jpy_max": 70000,
+        "tags": ["pulls", "braking", "caliper", "片流れ", "ブレーキ"],
+        "recommended_action_en": "Brake inspection for pad wear and caliper free movement",
+        "recommended_action_ja": "パッド厚とキャリパー作動の点検",
+    },
+    {
+        "obd_code": "P0171",
+        "entry_type": "obd_code",
+        "title_en": "System Too Lean (Bank 1)",
+        "title_ja": "システムがリーンすぎる（バンク1）",
+        "description_en": "ECM reports air-fuel mixture leaner than expected on bank 1.",
+        "description_ja": "バンク1の空燃比が基準より薄いとECMが判断している。",
+        "likely_causes_en": ["Vacuum leak", "MAF sensor dirty/failing", "Weak fuel pump"],
+        "likely_causes_ja": ["真空漏れ", "MAFセンサー汚れ・不良", "燃料ポンプ弱い"],
+        "severity_en": "Caution - can cause misfire if ignored",
+        "severity_ja": "注意 - 放置すると失火の恐れ",
+        "estimated_cost_usd_min": 80,
+        "estimated_cost_usd_max": 900,
+        "estimated_cost_jpy_min": 10000,
+        "estimated_cost_jpy_max": 120000,
+        "tags": ["P0171", "lean", "vacuum", "MAF", "リーン", "空燃比"],
+        "recommended_action_en": "Smoke-test vacuum leaks; inspect MAF and fuel pressure",
+        "recommended_action_ja": "真空漏れのスモークテスト、MAFと燃圧確認",
+    },
+    {
+        "obd_code": None,
+        "entry_type": "symptom",
+        "title_en": "Transmission slips or delayed engagement",
+        "title_ja": "ミッションが滑る・ギア入りが遅い",
+        "description_en": "RPM rises without matching acceleration, or delayed Drive engagement.",
+        "description_ja": "回転だけ上がって加速しない、またはD入りが遅い。",
+        "likely_causes_en": ["Low/dirty ATF", "Worn clutch packs", "Failing solenoid"],
+        "likely_causes_ja": ["ATF不足・劣化", "クラッチ摩耗", "ソレノイド不良"],
+        "severity_en": "Caution - risk of stranding",
+        "severity_ja": "注意 - 走行不能のリスク",
+        "estimated_cost_usd_min": 150,
+        "estimated_cost_usd_max": 3500,
+        "estimated_cost_jpy_min": 20000,
+        "estimated_cost_jpy_max": 450000,
+        "tags": ["transmission", "slip", "ATF", "ミッション", "滑る"],
+        "recommended_action_en": "Check ATF level; scan transmission codes",
+        "recommended_action_ja": "ATF確認とミッション系コードスキャン",
     },
     {
         "obd_code": None,
@@ -167,17 +249,158 @@ def _fallback_search(
 
 
 def hits_to_prompt_snippets(hits: list[dict[str, Any]]) -> list[str]:
+    """Format retrieval hits as concise grounding lines for the system prompt."""
     snippets = []
-    for h in hits:
+    for i, h in enumerate(hits, 1):
         code = h.get("code") or h.get("entry_type") or "knowledge"
         sim = h.get("similarity")
-        sim_s = f" sim={sim:.3f}" if isinstance(sim, (int, float)) else ""
+        sim_s = f" similarity={sim:.3f}" if isinstance(sim, (int, float)) else ""
+        causes = h.get("causes") or []
+        if isinstance(causes, list):
+            causes_s = "; ".join(str(c) for c in causes[:5])
+        else:
+            causes_s = str(causes)
+        usd = h.get("cost_usd") or [None, None]
+        jpy = h.get("cost_jpy") or [None, None]
         snippets.append(
-            f"{code}{sim_s} | {h.get('severity')} | {h.get('title')} — {h.get('summary')} "
-            f"| causes={h.get('causes')} | USD={h.get('cost_usd')} JPY={h.get('cost_jpy')} "
-            f"| next={h.get('next_action')}"
+            f"[{i}] {code}{sim_s} | severity={h.get('severity')} | "
+            f"{h.get('title')} — {h.get('summary')} | "
+            f"likely_causes=[{causes_s}] | "
+            f"est_cost_USD={usd[0]}-{usd[1]} est_cost_JPY={jpy[0]}-{jpy[1]} | "
+            f"next_action={h.get('next_action')} | source={h.get('source')}"
         )
     return snippets
+
+
+def _database_url() -> str | None:
+    settings = get_settings()
+    url = (settings.database_url or "").strip()
+    if url.startswith("postgres") and not settings._is_placeholder(url):
+        return url
+    return None
+
+
+def _search_via_database(
+    query: str,
+    language: str,
+    obd_code: str | None,
+    top_k: int,
+    query_embedding: list[float] | None,
+) -> list[dict[str, Any]]:
+    """Direct Postgres RAG (works without Supabase service_role key)."""
+    url = _database_url()
+    if not url:
+        return []
+
+    try:
+        import psycopg
+    except ImportError:
+        return []
+
+    hits: list[dict[str, Any]] = []
+    codes = extract_dtc_codes(query)
+    if obd_code:
+        codes.append(str(obd_code).upper())
+
+    try:
+        with psycopg.connect(url, connect_timeout=20) as conn:
+            with conn.cursor() as cur:
+                # 1) Exact OBD
+                for code in codes:
+                    cur.execute(
+                        """
+                        select id, entry_type, obd_code, title_en, title_ja,
+                               description_en, description_ja,
+                               likely_causes_en, likely_causes_ja,
+                               severity_en, severity_ja,
+                               recommended_action_en, recommended_action_ja,
+                               estimated_cost_usd_min, estimated_cost_usd_max,
+                               estimated_cost_jpy_min, estimated_cost_jpy_max
+                        from knowledge_entries
+                        where obd_code = %s
+                        limit 3
+                        """,
+                        (code.upper(),),
+                    )
+                    cols = [d.name for d in cur.description]
+                    for row in cur.fetchall():
+                        d = dict(zip(cols, row))
+                        d["_source"] = "postgres_code"
+                        hits.append(_format_hit(d, language))
+
+                # 2) Vector RPC
+                if query_embedding and len(hits) < top_k:
+                    # 0.30 threshold balances recall for small PoC KB vs noise
+                    cur.execute(
+                        """
+                        select id, entry_type, obd_code, title_en, title_ja,
+                               description_en, description_ja,
+                               likely_causes_en, likely_causes_ja,
+                               severity_en, severity_ja,
+                               recommended_action_en, recommended_action_ja,
+                               estimated_cost_usd_min, estimated_cost_usd_max,
+                               estimated_cost_jpy_min, estimated_cost_jpy_max,
+                               similarity
+                        from match_knowledge_entries(%s::vector, %s, %s)
+                        """,
+                        (query_embedding, 0.30, top_k),
+                    )
+                    cols = [d.name for d in cur.description]
+                    for row in cur.fetchall():
+                        d = dict(zip(cols, row))
+                        d["_source"] = "postgres_vector"
+                        hits.append(_format_hit(d, language))
+
+                # 3) Text safety net
+                if len(hits) < top_k and query.strip():
+                    cur.execute(
+                        """
+                        select id, entry_type, obd_code, title_en, title_ja,
+                               description_en, description_ja,
+                               likely_causes_en, likely_causes_ja,
+                               severity_en, severity_ja,
+                               recommended_action_en, recommended_action_ja,
+                               estimated_cost_usd_min, estimated_cost_usd_max,
+                               estimated_cost_jpy_min, estimated_cost_jpy_max,
+                               embed_text
+                        from knowledge_entries
+                        limit 80
+                        """
+                    )
+                    cols = [d.name for d in cur.description]
+                    tokens = [
+                        t
+                        for t in re.findall(r"[\w\u3040-\u30ff\u4e00-\u9fff]+", query.lower())
+                        if len(t) > 1
+                    ]
+                    for row in cur.fetchall():
+                        d = dict(zip(cols, row))
+                        blob = " ".join(
+                            [
+                                str(d.get("title_en") or ""),
+                                str(d.get("title_ja") or ""),
+                                str(d.get("description_en") or ""),
+                                str(d.get("description_ja") or ""),
+                                str(d.get("embed_text") or ""),
+                                " ".join(d.get("likely_causes_en") or []),
+                                " ".join(d.get("likely_causes_ja") or []),
+                                str(d.get("obd_code") or ""),
+                            ]
+                        ).lower()
+                        if any(tok in blob for tok in tokens):
+                            d["_source"] = "postgres_text"
+                            hits.append(_format_hit(d, language))
+    except Exception:
+        return []
+
+    seen: set[str] = set()
+    unique: list[dict[str, Any]] = []
+    for h in hits:
+        key = f"{h.get('id') or ''}:{h.get('code')}:{h.get('title')}"
+        if key not in seen:
+            seen.add(key)
+            unique.append(h)
+    return unique[:top_k]
 
 
 async def search_repair_knowledge(
@@ -189,15 +412,19 @@ async def search_repair_knowledge(
 ) -> list[dict[str, Any]]:
     """
     Search knowledge base.
-    1) Exact OBD code match (SQL)
-    2) Vector RPC match_knowledge_entries when embedding provided + Supabase configured
-    3) Text contains fallback on Supabase rows
-    4) Local FALLBACK_KNOWLEDGE when Supabase not configured
+    1) Postgres via DATABASE_URL (vector RPC + code + text) — preferred when available
+    2) Supabase REST when service_role configured
+    3) Local FALLBACK_KNOWLEDGE
     """
     settings = get_settings()
     filters = filters or {}
     obd_code = filters.get("obd_code")
     lang = language if language in ("en", "ja") else "en"
+
+    # Prefer direct Postgres (works without service_role)
+    pg_hits = _search_via_database(query, lang, obd_code, top_k, query_embedding)
+    if pg_hits:
+        return pg_hits
 
     if not settings.supabase_configured:
         return _fallback_search(query, lang, obd_code, top_k)
@@ -232,7 +459,7 @@ async def search_repair_knowledge(
                     "match_knowledge_entries",
                     {
                         "query_embedding": query_embedding,
-                        "match_threshold": 0.5,
+                        "match_threshold": 0.30,
                         "match_count": top_k,
                     },
                 ).execute()
