@@ -133,12 +133,17 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
     min_sim = float(settings.rag_min_similarity)
     # Only strong hits are shown to the model / used for hard cost quotes.
     # Weak vector hits are dropped so GPT falls back to general knowledge.
-    rag_hits = filter_strong_hits(raw_rag_hits, min_similarity=min_sim)
+    turn_strong = filter_strong_hits(raw_rag_hits, min_similarity=min_sim)
+    if turn_strong:
+        state.last_strong_rag_hits = turn_strong
+    # Prefer this turn's strong hits; else carry session grounding for later
+    # "give me a diagnosis" turns that re-embed poorly.
+    rag_hits = turn_strong or list(state.last_strong_rag_hits or [])
     log_retrieval(
         session_id=state.session_id,
         query=req.message,
         raw_hits=raw_rag_hits,
-        strong_hits=rag_hits,
+        strong_hits=turn_strong,
         min_similarity=min_sim,
     )
     snippets = hits_to_prompt_snippets(rag_hits)
@@ -202,12 +207,15 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
                 filters=args.get("filters"),
                 top_k=int(args.get("top_k") or 5),
             )
-            rag_hits = filter_strong_hits(extra_raw, min_similarity=min_sim)
+            tool_strong = filter_strong_hits(extra_raw, min_similarity=min_sim)
+            if tool_strong:
+                state.last_strong_rag_hits = tool_strong
+                rag_hits = tool_strong
             log_retrieval(
                 session_id=state.session_id,
                 query=args.get("query") or req.message,
                 raw_hits=extra_raw,
-                strong_hits=rag_hits,
+                strong_hits=tool_strong,
                 min_similarity=min_sim,
             )
             # Continue; usually LLM already has context. Keep reply if any.
@@ -225,8 +233,9 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
                 }
             if "questions_asked_count" not in args:
                 args["questions_asked_count"] = state.questions_asked_count
-            # Hard-quote cost from top strong RAG hit (ignore LLM-invented ranges)
-            args = apply_grounded_cost(args, rag_hits, req.language)
+            # Hard-quote cost from top strong RAG hit (this turn or session carry-over)
+            cost_hits = rag_hits or list(state.last_strong_rag_hits or [])
+            args = apply_grounded_cost(args, cost_hits, req.language)
             try:
                 diagnosis_payload = DiagnosisPayload.model_validate(args)
                 mode = "diagnosis"

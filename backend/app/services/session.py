@@ -15,6 +15,8 @@ class SessionState:
     messages: list[dict[str, str]] = field(default_factory=list)
     vehicle: dict[str, Any] | None = None
     questions_asked_count: int = 0
+    # Last strong RAG hits for this session (cost hard-quote + grounding carry-over)
+    last_strong_rag_hits: list[dict[str, Any]] = field(default_factory=list)
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
