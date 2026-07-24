@@ -123,11 +123,16 @@ export function ChatInterface() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={t("chat.placeholder")}
-            rows={2}
+            rows={1}
             disabled={loading}
             aria-label={t("chat.placeholder")}
           />
-          <button className="btn btn-primary" type="submit" disabled={loading || !input.trim()}>
+          <button
+            className="btn btn-primary"
+            type="submit"
+            disabled={loading || !input.trim()}
+            aria-label={t("chat.send")}
+          >
             {loading ? "…" : t("chat.send")}
           </button>
         </div>

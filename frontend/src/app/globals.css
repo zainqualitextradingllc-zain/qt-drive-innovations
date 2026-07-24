@@ -1,21 +1,27 @@
 :root {
-  --bg-void: #0b0b0c;
-  --bg-panel: #141416;
-  --bg-elevated: #1c1c1f;
-  --bg-input: #121214;
-  --chrome: #c8ccd2;
-  --chrome-bright: #e8eaed;
-  --chrome-dim: #8b909a;
-  --accent-red: #c8102e;
-  --accent-red-soft: rgba(200, 16, 46, 0.15);
-  --border: rgba(200, 204, 210, 0.12);
-  --border-strong: rgba(200, 204, 210, 0.22);
-  --safe: #2f9e6b;
+  --bg-void: #030712; /* gray-950 */
+  --bg-panel: #111827; /* gray-900 */
+  --bg-elevated: #1f2937; /* gray-800 */
+  --bg-input: #1f2937;
+  --chrome: #e5e7eb; /* gray-200 */
+  --chrome-bright: #f9fafb; /* gray-50 */
+  --chrome-dim: #9ca3af; /* gray-400 */
+  --chrome-muted: #6b7280; /* gray-500 */
+  --accent-red: #dc2626; /* red-600 */
+  --accent-red-hover: #b91c1c; /* red-700 */
+  --accent-red-soft: rgba(220, 38, 38, 0.14);
+  --border: rgba(55, 65, 81, 0.9); /* gray-700-ish */
+  --border-strong: rgba(75, 85, 99, 0.95);
+  --safe: #10b981;
   --caution: #d4a017;
-  --stop: #c8102e;
-  --radius: 14px;
-  --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-  --font: "Segoe UI", "Noto Sans JP", "Hiragino Sans", "Helvetica Neue", Arial, sans-serif;
+  --stop: #dc2626;
+  --radius: 1rem; /* 16px */
+  --radius-lg: 1.25rem;
+  --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --touch: 44px;
+  --font: "Segoe UI", "Noto Sans JP", "Hiragino Sans", "Helvetica Neue", Arial,
+    sans-serif;
 }
 
 *,
@@ -33,13 +39,23 @@ body {
   color: var(--chrome-bright);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background-image:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(200, 16, 46, 0.12), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(200, 204, 210, 0.06), transparent);
+  background-image: radial-gradient(
+    ellipse 80% 50% at 50% -20%,
+    rgba(220, 38, 38, 0.1),
+    transparent
+  );
   background-attachment: fixed;
+}
+
+/* Desktop: soft outer padding so the app shell reads as a card */
+@media (min-width: 768px) {
+  body {
+    padding: 1.25rem 1rem 1.5rem;
+  }
 }
 
 a {
@@ -53,30 +69,60 @@ textarea {
   font: inherit;
 }
 
+/* ——— App shell ——— */
 .app-shell {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  max-width: 720px;
+  width: 100%;
+  max-width: 28rem; /* ~max-w-md — tight chat column like mockup */
   margin: 0 auto;
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(20, 20, 22, 0.95), rgba(11, 11, 12, 0.98));
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
   box-shadow: var(--shadow);
+  overflow: hidden;
 }
 
-/* Navbar */
+@media (min-width: 768px) {
+  .app-shell {
+    min-height: min(100dvh - 2.5rem, 820px);
+    max-width: 32rem; /* slightly wider on tablet+ */
+    border-radius: 1rem; /* rounded-2xl */
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-shell {
+    max-width: 36rem; /* roomier desktop chat */
+  }
+}
+
+/* Full-bleed on small phones / iframe embeds */
+@media (max-width: 767px) {
+  .app-shell {
+    max-width: 100%;
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100dvh;
+  }
+}
+
+/* ——— Navbar ——— */
 .navbar {
   position: sticky;
   top: 0;
   z-index: 50;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem 0.9rem;
-  background: rgba(12, 12, 14, 0.92);
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  background: rgba(17, 24, 39, 0.94);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .navbar-top {
@@ -89,14 +135,14 @@ textarea {
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.6rem;
   min-width: 0;
 }
 
 .brand-logo {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
+  width: 2rem; /* 32px — matches mockup QT mark scale */
+  height: 2rem;
+  border-radius: 0.5rem;
   object-fit: cover;
   border: 1px solid var(--border-strong);
   background: #000;
@@ -108,23 +154,26 @@ textarea {
 }
 
 .brand-name {
-  font-size: 0.95rem;
-  font-weight: 650;
-  letter-spacing: 0.02em;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--chrome-bright);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.25;
 }
 
 .brand-tagline {
-  font-size: 0.72rem;
-  color: var(--chrome-dim);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: var(--chrome-muted);
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  /* drop aggressive uppercase for cleaner bilingual UI */
+  text-transform: none;
 }
 
-/* Language toggle — always visible */
+/* Language toggle — always visible, 44px touch height */
 .lang-toggle {
   display: inline-flex;
   align-items: stretch;
@@ -133,17 +182,20 @@ textarea {
   overflow: hidden;
   background: var(--bg-elevated);
   flex-shrink: 0;
+  min-height: var(--touch);
 }
 
 .lang-toggle button {
   border: none;
   background: transparent;
   color: var(--chrome-dim);
-  padding: 0.4rem 0.85rem;
-  font-size: 0.8rem;
+  padding: 0 0.85rem;
+  min-height: var(--touch);
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .lang-toggle button:hover {
@@ -155,24 +207,31 @@ textarea {
   color: #fff;
 }
 
+.lang-toggle button:focus-visible {
+  outline: 2px solid var(--accent-red);
+  outline-offset: -2px;
+}
+
 .navbar-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   font-size: 0.75rem;
-  color: var(--chrome-dim);
+  color: var(--chrome-muted);
 }
 
 .skill-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.65rem;
+  padding: 0.3rem 0.7rem;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: var(--bg-panel);
+  background: rgba(31, 41, 55, 0.8);
   color: var(--chrome);
+  font-size: 0.72rem;
+  font-weight: 500;
 }
 
 .skill-pill::before {
@@ -181,10 +240,10 @@ textarea {
   height: 6px;
   border-radius: 50%;
   background: var(--safe);
-  box-shadow: 0 0 8px var(--safe);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
 }
 
-/* Chat */
+/* ——— Chat ——— */
 .chat-main {
   flex: 1;
   display: flex;
@@ -195,45 +254,53 @@ textarea {
 .messages {
   flex: 1;
   overflow-y: auto;
-  padding: 1.1rem 1rem 1.25rem;
+  overscroll-behavior: contain;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
+  -webkit-overflow-scrolling: touch;
+  /* subtle scrollbar on supporting browsers */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
 }
 
 .welcome-card {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background:
-    linear-gradient(135deg, rgba(200, 16, 46, 0.08), transparent 45%),
-    var(--bg-panel);
-  padding: 1.15rem 1.1rem;
+  border-radius: 1rem;
+  border-top-left-radius: 0.25rem; /* rounded-tl-sm like assistant bubble */
+  background: var(--bg-elevated);
+  padding: 0.9rem 1rem;
+  max-width: 90%;
+  box-shadow: var(--shadow-sm);
 }
 
 .welcome-card h1 {
-  margin: 0 0 0.45rem;
-  font-size: 1.15rem;
-  font-weight: 650;
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--chrome-bright);
+  line-height: 1.35;
 }
 
 .welcome-card p {
   margin: 0;
   color: var(--chrome-dim);
   line-height: 1.55;
-  font-size: 0.92rem;
+  font-size: 0.75rem;
 }
 
 .message-row {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  max-width: 92%;
+  gap: 0.3rem;
+  max-width: 85%;
 }
 
 .message-row.user {
   align-self: flex-end;
   align-items: flex-end;
+  max-width: 80%;
 }
 
 .message-row.assistant {
@@ -242,49 +309,54 @@ textarea {
 }
 
 .message-label {
-  font-size: 0.68rem;
-  color: var(--chrome-dim);
+  font-size: 0.65rem;
+  color: var(--chrome-muted);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  padding: 0 0.15rem;
 }
 
 .bubble {
-  padding: 0.75rem 0.95rem;
-  border-radius: 14px;
-  line-height: 1.55;
-  font-size: 0.95rem;
+  padding: 0.65rem 1rem;
+  line-height: 1.5;
+  font-size: 0.875rem;
   white-space: pre-wrap;
   word-break: break-word;
+  box-shadow: var(--shadow-sm);
 }
 
+/* User: solid red, clear separation (mockup) */
 .message-row.user .bubble {
-  background: var(--accent-red-soft);
-  border: 1px solid rgba(200, 16, 46, 0.35);
-  border-right: 3px solid var(--accent-red);
-  color: var(--chrome-bright);
-  border-radius: 14px 14px 4px 14px;
+  background: var(--accent-red);
+  border: none;
+  color: #fff;
+  border-radius: 1rem;
+  border-top-right-radius: 0.25rem; /* rounded-tr-sm */
 }
 
+/* Assistant: elevated gray */
 .message-row.assistant .bubble {
   background: var(--bg-elevated);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   color: var(--chrome);
-  border-radius: 14px 14px 14px 4px;
+  border-radius: 1rem;
+  border-top-left-radius: 0.25rem; /* rounded-tl-sm */
 }
 
-/* Vehicle chip */
+/* ——— Vehicle chip ——— */
 .vehicle-chip {
-  margin: 0 1rem;
+  margin: 0.65rem 1rem 0;
   padding: 0.55rem 0.8rem;
-  border-radius: 10px;
+  border-radius: 0.75rem;
   border: 1px solid var(--border);
-  background: var(--bg-panel);
-  font-size: 0.82rem;
+  background: var(--bg-elevated);
+  font-size: 0.8rem;
   color: var(--chrome);
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem 0.75rem;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .vehicle-chip strong {
@@ -296,18 +368,19 @@ textarea {
   color: var(--chrome-dim);
 }
 
-/* Diagnosis card */
+/* ——— Diagnosis card ——— */
 .diagnosis-card {
   margin-top: 0.5rem;
   border-radius: var(--radius);
   border: 1px solid var(--border-strong);
   background: var(--bg-panel);
   overflow: hidden;
-  width: min(100%, 420px);
+  width: 100%;
+  box-shadow: var(--shadow-sm);
 }
 
 .diagnosis-card.severity-safe_to_drive {
-  border-color: rgba(47, 158, 107, 0.45);
+  border-color: rgba(16, 185, 129, 0.45);
 }
 
 .diagnosis-card.severity-caution {
@@ -315,8 +388,8 @@ textarea {
 }
 
 .diagnosis-card.severity-stop_immediately {
-  border-color: rgba(200, 16, 46, 0.65);
-  box-shadow: 0 0 0 1px rgba(200, 16, 46, 0.2);
+  border-color: rgba(220, 38, 38, 0.65);
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.2);
 }
 
 .diagnosis-header {
@@ -331,7 +404,7 @@ textarea {
 
 .diagnosis-header h3 {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 650;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -339,16 +412,16 @@ textarea {
 }
 
 .severity-badge {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 0.28rem 0.55rem;
+  padding: 0.3rem 0.6rem;
   border-radius: 999px;
   letter-spacing: 0.02em;
 }
 
 .severity-badge.safe_to_drive {
-  background: rgba(47, 158, 107, 0.18);
-  color: #5ddeb0;
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
 }
 
 .severity-badge.caution {
@@ -357,8 +430,8 @@ textarea {
 }
 
 .severity-badge.stop_immediately {
-  background: rgba(200, 16, 46, 0.22);
-  color: #ff6b81;
+  background: rgba(220, 38, 38, 0.22);
+  color: #fca5a5;
 }
 
 .diagnosis-body {
@@ -372,13 +445,14 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  margin-bottom: 0.45rem;
 }
 
 .cause-top {
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 .cause-top span:last-child {
@@ -398,11 +472,11 @@ textarea {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent-red), #e85a4f);
+  background: linear-gradient(90deg, var(--accent-red), #f87171);
 }
 
 .meta-block {
-  font-size: 0.88rem;
+  font-size: 0.875rem;
   color: var(--chrome);
 }
 
@@ -423,52 +497,127 @@ textarea {
   padding-top: 0.65rem;
 }
 
-/* Composer */
-.composer {
+/* Lead capture CTA (post-diagnosis) */
+.lead-capture {
   border-top: 1px solid var(--border);
-  background: rgba(12, 12, 14, 0.95);
-  padding: 0.75rem 1rem 1rem;
+  padding-top: 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
 }
 
+.lead-prompt {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--chrome);
+  line-height: 1.4;
+}
+
+.lead-cta {
+  width: 100%;
+  min-height: var(--touch);
+}
+
+.lead-method-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.lead-method-row .btn-ghost {
+  min-height: var(--touch);
+  padding: 0 0.9rem;
+}
+
+.lead-method-row .btn-ghost.active {
+  color: var(--chrome-bright);
+  border-color: rgba(220, 38, 38, 0.55);
+  background: var(--accent-red-soft);
+}
+
+.lead-form input {
+  width: 100%;
+  min-height: var(--touch);
+  padding: 0.65rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-input);
+  color: var(--chrome-bright);
+  outline: none;
+  font-size: 0.875rem;
+}
+
+.lead-form input:focus {
+  border-color: rgba(220, 38, 38, 0.65);
+  box-shadow: 0 0 0 2px var(--accent-red-soft);
+}
+
+.lead-error {
+  font-size: 0.78rem;
+  color: #fca5a5;
+}
+
+.lead-success {
+  font-size: 0.88rem;
+  color: #6ee7b7;
+  font-weight: 600;
+}
+
+/* ——— Composer (input + send) ——— */
+.composer {
+  border-top: 1px solid var(--border);
+  background: rgba(17, 24, 39, 0.98);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .composer-row {
   display: flex;
   gap: 0.5rem;
-  align-items: flex-end;
+  align-items: center;
 }
 
 .composer textarea {
   flex: 1;
   resize: none;
-  min-height: 48px;
-  max-height: 140px;
-  padding: 0.7rem 0.85rem;
-  border-radius: 12px;
+  min-height: var(--touch);
+  max-height: 120px;
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
   border: 1px solid var(--border-strong);
   background: var(--bg-input);
   color: var(--chrome-bright);
   outline: none;
+  /* 16px minimum avoids iOS focus zoom */
+  font-size: max(0.875rem, 16px);
+  line-height: 1.4;
 }
 
 .composer textarea:focus {
-  border-color: rgba(200, 16, 46, 0.55);
-  box-shadow: 0 0 0 3px var(--accent-red-soft);
+  border-color: rgba(220, 38, 38, 0.65);
+  box-shadow: 0 0 0 2px var(--accent-red-soft);
 }
 
 .composer textarea::placeholder {
-  color: var(--chrome-dim);
+  color: var(--chrome-muted);
+}
+
+.composer textarea:disabled {
+  opacity: 0.65;
 }
 
 .btn {
   border: none;
   cursor: pointer;
-  border-radius: 12px;
-  padding: 0.7rem 1rem;
-  font-weight: 650;
-  font-size: 0.9rem;
-  transition: opacity 0.15s, transform 0.1s;
+  border-radius: 999px;
+  padding: 0.65rem 1rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: background 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn:disabled {
@@ -476,28 +625,50 @@ textarea {
   cursor: not-allowed;
 }
 
+.btn:focus-visible {
+  outline: 2px solid var(--accent-red);
+  outline-offset: 2px;
+}
+
 .btn-primary {
   background: var(--accent-red);
   color: #fff;
-  min-width: 5.5rem;
+  min-width: var(--touch);
+  min-height: var(--touch);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem;
+  flex-shrink: 0;
 }
 
 .btn-primary:not(:disabled):hover {
-  filter: brightness(1.08);
+  background: var(--accent-red-hover);
+}
+
+.btn-primary:not(:disabled):active {
+  filter: brightness(0.95);
 }
 
 .btn-ghost {
   background: transparent;
   color: var(--chrome-dim);
-  border: 1px solid var(--border);
-  padding: 0.4rem 0.7rem;
-  font-size: 0.78rem;
-  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  min-height: 2.25rem;
 }
 
 .btn-ghost:hover {
   color: var(--chrome-bright);
-  border-color: var(--border-strong);
+  background: rgba(31, 41, 55, 0.9);
+}
+
+.btn-ghost:focus-visible {
+  outline: 2px solid var(--accent-red);
+  outline-offset: 2px;
 }
 
 .composer-tools {
@@ -508,41 +679,114 @@ textarea {
 }
 
 .footer-bar {
-  padding: 0.55rem 1rem 0.85rem;
-  font-size: 0.68rem;
-  color: var(--chrome-dim);
+  padding: 0.5rem 1rem 0.75rem;
+  font-size: 0.625rem;
+  color: var(--chrome-muted);
   text-align: center;
-  line-height: 1.45;
+  line-height: 1.5;
   border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.footer-bar div + div {
+  color: #4b5563; /* gray-600 */
+  margin-top: 0.15rem;
 }
 
 .error-banner {
-  margin: 0 1rem;
-  padding: 0.6rem 0.75rem;
-  border-radius: 10px;
-  background: rgba(200, 16, 46, 0.12);
-  border: 1px solid rgba(200, 16, 46, 0.35);
-  color: #ff8a9a;
+  margin: 0.65rem 1rem 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.75rem;
+  background: rgba(220, 38, 38, 0.12);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  color: #fca5a5;
   font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
 .typing {
   color: var(--chrome-dim);
-  font-size: 0.85rem;
-  padding: 0 0.25rem;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.35rem;
+  align-self: flex-start;
 }
 
+/* ——— Responsive ——— */
 @media (max-width: 480px) {
+  .navbar {
+    padding: 0.65rem 0.85rem;
+    gap: 0.5rem;
+  }
+
   .brand-name {
-    font-size: 0.85rem;
+    font-size: 0.8125rem;
+  }
+
+  .brand-tagline {
+    font-size: 0.6875rem;
   }
 
   .lang-toggle button {
-    padding: 0.38rem 0.65rem;
-    font-size: 0.75rem;
+    padding: 0 0.7rem;
+    font-size: 0.7rem;
+  }
+
+  .messages {
+    padding: 0.85rem;
+    gap: 0.65rem;
   }
 
   .message-row {
+    max-width: 90%;
+  }
+
+  .message-row.user {
+    max-width: 88%;
+  }
+
+  .welcome-card {
     max-width: 100%;
+  }
+
+  .composer {
+    padding: 0.65rem 0.75rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .composer-row {
+    gap: 0.4rem;
+  }
+
+  /* Compact send label on very small screens still ≥44px touch */
+  .btn-primary {
+    min-width: var(--touch);
+    padding: 0 0.85rem;
+  }
+
+  .navbar-meta {
+    font-size: 0.7rem;
+  }
+}
+
+/* Prefer taller chat viewport when height is limited (iframe / landscape phones) */
+@media (max-height: 640px) {
+  .navbar-meta {
+    display: none;
+  }
+
+  .welcome-card {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .composer textarea {
+    max-height: 88px;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
   }
 }
