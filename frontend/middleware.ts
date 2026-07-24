@@ -30,19 +30,13 @@ function negotiateLocale(request: NextRequest): (typeof routing.locales)[number]
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Bare "/" must never fall through to a missing root page (production 404).
-  // Prefer next-intl negotiation; hard-fallback to negotiated/default locale.
-  if (pathname === "/") {
-    const intlResponse = intlMiddleware(request);
-    if (intlResponse instanceof NextResponse) {
-      const location = intlResponse.headers.get("location");
-      if (location) {
-        return withFrameHeaders(intlResponse);
-      }
-    }
-
+  // Bare "/" must never reach a missing root page (production was serving
+  // a cached static 404). Always hard-redirect — do not depend on next-intl
+  // alone for this path (rewrites / failed negotiation still 404 without a page).
+  if (pathname === "/" || pathname === "") {
+    const locale = negotiateLocale(request);
     const url = request.nextUrl.clone();
-    url.pathname = `/${negotiateLocale(request)}`;
+    url.pathname = `/${locale}`;
     return withFrameHeaders(NextResponse.redirect(url));
   }
 
