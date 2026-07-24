@@ -11,7 +11,14 @@ from app.models.diagnosis import DiagnosisPayload
 from app.prompts.diagnostic import build_context_block, get_system_prompt
 from app.services.llm import chat_with_tools
 from app.services.session import SessionState, session_store
-from app.tools.rag import hits_to_prompt_snippets, search_repair_knowledge
+from app.tools.rag import (
+    apply_grounded_cost,
+    filter_strong_hits,
+    format_grounded_cost,
+    hits_to_prompt_snippets,
+    log_retrieval,
+    search_repair_knowledge,
+)
 from app.tools.vin import decode_vin_nhtsa, extract_vin
 
 # Simple JP character detection for language fallback
@@ -105,9 +112,11 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
             vehicle = _vehicle_from_decode(decoded)
             state.vehicle = vehicle.model_dump()
 
-    # RAG (vector search when OpenAI + Supabase embeddings are available)
+    # RAG vector query when OpenAI embeddings + Postgres/Supabase knowledge are available
     query_embedding = None
-    if settings.openai_configured and settings.supabase_configured:
+    if settings.openai_configured and (
+        settings.database_configured or settings.supabase_configured
+    ):
         try:
             from app.services.embeddings import embed_query
 
@@ -115,13 +124,27 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
         except Exception:
             query_embedding = None
 
-    rag_hits = await search_repair_knowledge(
+    raw_rag_hits = await search_repair_knowledge(
         query=req.message,
         language=req.language,
         top_k=5,
         query_embedding=query_embedding,
     )
+    min_sim = float(settings.rag_min_similarity)
+    # Only strong hits are shown to the model / used for hard cost quotes.
+    # Weak vector hits are dropped so GPT falls back to general knowledge.
+    rag_hits = filter_strong_hits(raw_rag_hits, min_similarity=min_sim)
+    log_retrieval(
+        session_id=state.session_id,
+        query=req.message,
+        raw_hits=raw_rag_hits,
+        strong_hits=rag_hits,
+        min_similarity=min_sim,
+    )
     snippets = hits_to_prompt_snippets(rag_hits)
+    mandatory_cost = (
+        format_grounded_cost(rag_hits[0], req.language) if rag_hits else None
+    )
 
     detected = detect_message_language(req.message)
     context_block = build_context_block(
@@ -131,6 +154,9 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
         max_questions=settings.max_clarifying_questions,
         rag_snippets=snippets,
         detected_user_language=detected,
+        has_strong_grounding=bool(rag_hits),
+        mandatory_cost_quote=mandatory_cost,
+        min_similarity=min_sim,
     )
 
     system_prompt = get_system_prompt(req.language) + "\n\n" + context_block
@@ -170,13 +196,20 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
                     mode = "question"
 
         elif name == "search_repair_knowledge":
-            extra = await search_repair_knowledge(
+            extra_raw = await search_repair_knowledge(
                 query=args.get("query") or req.message,
                 language=args.get("language") or req.language,
                 filters=args.get("filters"),
                 top_k=int(args.get("top_k") or 5),
             )
-            rag_hits = extra
+            rag_hits = filter_strong_hits(extra_raw, min_similarity=min_sim)
+            log_retrieval(
+                session_id=state.session_id,
+                query=args.get("query") or req.message,
+                raw_hits=extra_raw,
+                strong_hits=rag_hits,
+                min_similarity=min_sim,
+            )
             # Continue; usually LLM already has context. Keep reply if any.
 
         elif name == "emit_diagnosis":
@@ -192,6 +225,8 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
                 }
             if "questions_asked_count" not in args:
                 args["questions_asked_count"] = state.questions_asked_count
+            # Hard-quote cost from top strong RAG hit (ignore LLM-invented ranges)
+            args = apply_grounded_cost(args, rag_hits, req.language)
             try:
                 diagnosis_payload = DiagnosisPayload.model_validate(args)
                 mode = "diagnosis"

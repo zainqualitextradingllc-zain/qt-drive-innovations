@@ -59,7 +59,11 @@ EMIT_DIAGNOSIS_PARAMETERS: dict[str, Any] = {
         },
         "estimated_cost": {
             "type": "string",
-            "description": "Localized cost range, e.g. '150-400 USD' or '20,000〜60,000円'.",
+            "description": (
+                "Localized cost range. When [MANDATORY COST QUOTE] is present in context, "
+                "copy that exact string (e.g. '150-400 USD' or '20000〜60000円'). "
+                "Never invent a different range when a quote is provided."
+            ),
         },
         "currency": {"type": "string", "enum": ["USD", "JPY"]},
         "cost_min": {"type": ["number", "null"]},

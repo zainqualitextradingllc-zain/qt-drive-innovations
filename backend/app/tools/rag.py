@@ -248,6 +248,99 @@ def _fallback_search(
     return hits
 
 
+# Default strong-match floor (overridden by settings.rag_min_similarity in callers).
+DEFAULT_MIN_SIMILARITY = 0.55
+
+
+def hit_similarity(hit: dict[str, Any]) -> float | None:
+    sim = hit.get("similarity")
+    if isinstance(sim, (int, float)):
+        return float(sim)
+    return None
+
+
+def is_strong_hit(hit: dict[str, Any], min_similarity: float = DEFAULT_MIN_SIMILARITY) -> bool:
+    """
+    Strong enough to ground the answer (causes + hard-quoted cost).
+
+    - Exact OBD code hits (*_code sources) always count as strong.
+    - Vector hits need similarity >= min_similarity.
+    - Pure text-token fallbacks without a similarity score are NOT strong
+      (avoid forcing weak "grounded" matches).
+    """
+    source = str(hit.get("source") or "")
+    if "code" in source:
+        return True
+    sim = hit_similarity(hit)
+    if sim is None:
+        return False
+    return sim >= min_similarity
+
+
+def filter_strong_hits(
+    hits: list[dict[str, Any]],
+    min_similarity: float = DEFAULT_MIN_SIMILARITY,
+) -> list[dict[str, Any]]:
+    return [h for h in hits if is_strong_hit(h, min_similarity)]
+
+
+def format_grounded_cost(hit: dict[str, Any], language: str) -> dict[str, Any] | None:
+    """
+    Build hard cost fields from a knowledge hit.
+    Returns None if the hit has no usable min/max for the session language.
+    """
+    if language == "ja":
+        lo, hi = (hit.get("cost_jpy") or [None, None])[:2]
+        if lo is None or hi is None:
+            lo, hi = (hit.get("cost_usd") or [None, None])[:2]
+            if lo is None or hi is None:
+                return None
+            return {
+                "currency": "USD",
+                "cost_min": float(lo),
+                "cost_max": float(hi),
+                "estimated_cost": f"{int(lo)}-{int(hi)} USD",
+            }
+        return {
+            "currency": "JPY",
+            "cost_min": float(lo),
+            "cost_max": float(hi),
+            "estimated_cost": f"{int(lo)}〜{int(hi)}円",
+        }
+
+    lo, hi = (hit.get("cost_usd") or [None, None])[:2]
+    if lo is None or hi is None:
+        return None
+    return {
+        "currency": "USD",
+        "cost_min": float(lo),
+        "cost_max": float(hi),
+        "estimated_cost": f"{int(lo)}-{int(hi)} USD",
+    }
+
+
+def apply_grounded_cost(
+    diagnosis_args: dict[str, Any],
+    strong_hits: list[dict[str, Any]],
+    language: str,
+) -> dict[str, Any]:
+    """
+    Overwrite estimated_cost / currency / cost_min / cost_max from the top
+    strong knowledge hit. Server-side enforcement — do not trust the LLM range.
+    """
+    if not strong_hits:
+        return diagnosis_args
+    cost = format_grounded_cost(strong_hits[0], language)
+    if not cost:
+        return diagnosis_args
+    out = dict(diagnosis_args)
+    out["estimated_cost"] = cost["estimated_cost"]
+    out["currency"] = cost["currency"]
+    out["cost_min"] = cost["cost_min"]
+    out["cost_max"] = cost["cost_max"]
+    return out
+
+
 def hits_to_prompt_snippets(hits: list[dict[str, Any]]) -> list[str]:
     """Format retrieval hits as concise grounding lines for the system prompt."""
     snippets = []
@@ -266,10 +359,43 @@ def hits_to_prompt_snippets(hits: list[dict[str, Any]]) -> list[str]:
             f"[{i}] {code}{sim_s} | severity={h.get('severity')} | "
             f"{h.get('title')} — {h.get('summary')} | "
             f"likely_causes=[{causes_s}] | "
-            f"est_cost_USD={usd[0]}-{usd[1]} est_cost_JPY={jpy[0]}-{jpy[1]} | "
+            f"QUOTE_COST_USD={usd[0]}-{usd[1]} QUOTE_COST_JPY={jpy[0]}-{jpy[1]} | "
             f"next_action={h.get('next_action')} | source={h.get('source')}"
         )
     return snippets
+
+
+def log_retrieval(
+    *,
+    session_id: str,
+    query: str,
+    raw_hits: list[dict[str, Any]],
+    strong_hits: list[dict[str, Any]],
+    min_similarity: float,
+) -> None:
+    """Server-side only — never shown to the user."""
+    import logging
+
+    logger = logging.getLogger("qt.rag")
+    summary = [
+        {
+            "id": h.get("id"),
+            "title": h.get("title_en") or h.get("title"),
+            "sim": hit_similarity(h),
+            "source": h.get("source"),
+            "strong": is_strong_hit(h, min_similarity),
+        }
+        for h in raw_hits[:8]
+    ]
+    logger.info(
+        "rag_retrieve session_id=%s min_sim=%.2f strong=%d/%d query=%r hits=%s",
+        session_id,
+        min_similarity,
+        len(strong_hits),
+        len(raw_hits),
+        (query or "")[:200],
+        summary,
+    )
 
 
 def _database_url() -> str | None:

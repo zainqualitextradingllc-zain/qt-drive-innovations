@@ -33,6 +33,15 @@ class Settings(BaseSettings):
     max_clarifying_questions: int = 4
     use_mock_llm: bool = False
 
+    # RAG: cosine similarity floor for "strong" vector matches.
+    # Below this → treat as no grounded knowledge (general GPT only).
+    # Exact OBD code matches always count as strong regardless of this value.
+    # 0.55 keeps JP battery (~0.56) as strong; weak/tangential hits stay out.
+    rag_min_similarity: float = 0.55
+
+    # PostHog (same project token as NEXT_PUBLIC_POSTHOG_KEY; server-only env name)
+    posthog_key: str = ""
+
     @staticmethod
     def _is_placeholder(value: str) -> bool:
         """True for empty/template secrets that must never be treated as live keys."""
@@ -68,6 +77,14 @@ class Settings(BaseSettings):
         return not (
             self._is_placeholder(self.supabase_url)
             or self._is_placeholder(self.supabase_service_role_key)
+        )
+
+    @property
+    def database_configured(self) -> bool:
+        return (
+            bool(self.database_url)
+            and self.database_url.startswith("postgres")
+            and not self._is_placeholder(self.database_url)
         )
 
 

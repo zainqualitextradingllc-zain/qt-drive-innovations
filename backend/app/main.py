@@ -1,9 +1,18 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.config import get_settings
 from app.routers import chat_router, health_router
+
+# Ensure server-side RAG retrieval logs are visible (session + similarity).
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logging.getLogger("qt.rag").setLevel(logging.INFO)
 
 settings = get_settings()
 

@@ -42,8 +42,14 @@ VEHICLE / VIN CONTEXT
 
 KNOWLEDGE GROUNDING
 - Prefer facts from provided RAG snippets and VIN decode data over free invention.
+- If [GROUNDED KNOWLEDGE] says "none" or "no strong match", answer with general
+  technician knowledge. Do NOT invent a fake knowledge-base match or invent
+  precise catalog costs.
+- When [MANDATORY COST QUOTE] is present, you MUST use that exact estimated_cost,
+  currency, cost_min, and cost_max in emit_diagnosis. Do not paraphrase or widen
+  the range (e.g. never change 150-400 USD into 200-600 USD).
+- Prefer likely_causes from grounded snippets when present.
 - If evidence is thin, lower confidence and say so.
-- Cost ranges are estimates only. Always note regional variation.
 
 SAFETY (NON-NEGOTIABLE)
 - Immediate danger symptoms → severity "Stop immediately", advise not to drive, may skip remaining questions.
@@ -93,7 +99,12 @@ PROMPT_JA = """あなたは Qualitex Trading LLC が提供する「QT Drive Inno
 - コンテキストの NHTSA vPIC 結果を優先。仕様を捏造しない。
 
 ナレッジ
-- 提供されたRAGとVIN情報を自由生成より優先。根拠が薄い場合は確信度を下げる。
+- 提供されたRAGとVIN情報を自由生成より優先。
+- [GROUNDED KNOWLEDGE] が none / no strong match のときは一般知識で回答。架空の
+  ナレッジ一致や架空の価格表を作らない。
+- [MANDATORY COST QUOTE] がある場合、emit_diagnosis の estimated_cost / currency /
+  cost_min / cost_max は必ずその値をそのまま使う（言い換え・範囲拡大禁止）。
+- 根拠が薄い場合は確信度を下げる。
 
 安全（最優先）
 - 即時危険 → severity「直ちに停止」、運転継続を避ける。
@@ -123,6 +134,9 @@ def build_context_block(
     max_questions: int,
     rag_snippets: list[str],
     detected_user_language: str | None = None,
+    has_strong_grounding: bool = False,
+    mandatory_cost_quote: dict | None = None,
+    min_similarity: float | None = None,
 ) -> str:
     lines = [
         f"[SESSION] ui_language={language} questions_asked={questions_asked} max_clarifying={max_questions}",
@@ -135,9 +149,36 @@ def build_context_block(
         lines.append(f"[VEHICLE] {vehicle}")
     else:
         lines.append("[VEHICLE] none yet")
-    if rag_snippets:
-        lines.append("[GROUNDED KNOWLEDGE]")
+
+    if rag_snippets and has_strong_grounding:
+        lines.append("[GROUNDED KNOWLEDGE] strong matches only — use these facts")
         lines.extend(f"- {s}" for s in rag_snippets)
+    elif rag_snippets and not has_strong_grounding:
+        # Should not normally inject weak hits; keep defensive message
+        thr = f" (threshold={min_similarity})" if min_similarity is not None else ""
+        lines.append(
+            f"[GROUNDED KNOWLEDGE] no strong match{thr} — "
+            "use general diagnostic knowledge; do not claim catalog grounding"
+        )
     else:
-        lines.append("[GROUNDED KNOWLEDGE] none retrieved for this turn")
+        thr = f" (min_similarity={min_similarity})" if min_similarity is not None else ""
+        lines.append(
+            f"[GROUNDED KNOWLEDGE] none retrieved{thr} — "
+            "use general diagnostic knowledge; do not invent precise catalog costs"
+        )
+
+    if mandatory_cost_quote:
+        lines.append(
+            "[MANDATORY COST QUOTE] When calling emit_diagnosis, copy these fields EXACTLY:"
+        )
+        lines.append(
+            f"  estimated_cost={mandatory_cost_quote.get('estimated_cost')!r} "
+            f"currency={mandatory_cost_quote.get('currency')!r} "
+            f"cost_min={mandatory_cost_quote.get('cost_min')} "
+            f"cost_max={mandatory_cost_quote.get('cost_max')}"
+        )
+        lines.append(
+            "  Do not invent a different range. Server will overwrite if you deviate."
+        )
+
     return "\n".join(lines)
