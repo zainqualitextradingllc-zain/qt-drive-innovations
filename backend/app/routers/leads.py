@@ -6,7 +6,7 @@ import logging
 import re
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
 from app.config import get_settings
@@ -162,16 +162,17 @@ def _save_lead_row(payload: LeadPayload) -> bool:
 
 
 @router.post("/capture")
-async def capture_lead(payload: LeadPayload, background_tasks: BackgroundTasks):
+async def capture_lead(payload: LeadPayload):
     if payload.contact_method == "email" and not _EMAIL_RE.match(payload.contact_value):
         raise HTTPException(status_code=422, detail="invalid email format")
 
     # 1. PII source of truth (Postgres / Supabase when configured)
     _save_lead_row(payload)
 
-    # 2. Funnel signal only (no contact_value)
-    background_tasks.add_task(
-        fire_lead_captured,
+    # 2. Funnel signal only (no contact_value).
+    # Awaited (not BackgroundTasks) so Railway workers cannot drop the PostHog
+    # call after the HTTP response is already sent.
+    await fire_lead_captured(
         payload.session_id,
         payload.contact_method,
         payload.diagnosis_category,
