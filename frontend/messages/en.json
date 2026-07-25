@@ -64,7 +64,7 @@
     "submit": "Send",
     "submitting": "Sending…",
     "success": "Thanks — we’ll follow up shortly.",
-    "verifyBlurb": "Your diagnosis was secured with a cryptographic hash so it can be checked for tampering.",
+    "verifyBlurb": "Your diagnosis record has been saved with a tamper-evident cryptographic hash. Verify it anytime:",
     "verifyLinkLabel": "Verify this diagnosis",
     "error": "Could not submit. Please try again."
   },
