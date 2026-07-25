@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -32,6 +33,69 @@ def _utc_now_iso() -> str:
     )
 
 
+def _parse_cost_range_from_text(estimated_cost: str | None) -> tuple[float | None, float | None]:
+    """
+    Extract numeric min/max from localized cost strings when cost_min/max
+    were not set (LLM often only emits estimated_cost like '200-600 USD').
+    """
+    if not estimated_cost or not str(estimated_cost).strip():
+        return None, None
+    text = str(estimated_cost).replace(",", "").replace("，", "")
+    # Normalize common range separators: 〜 ~ – — to -
+    for sep in ("〜", "~", "–", "—", " to ", " TO "):
+        text = text.replace(sep, "-")
+    # Find two numbers in order (min then max)
+    nums = re.findall(r"\d+(?:\.\d+)?", text)
+    if len(nums) >= 2:
+        lo, hi = float(nums[0]), float(nums[1])
+        if lo > hi:
+            lo, hi = hi, lo
+        return lo, hi
+    if len(nums) == 1:
+        v = float(nums[0])
+        return v, v
+    return None, None
+
+
+def _vehicle_dict_from_sources(
+    diagnosis: DiagnosisPayload,
+    vehicle_fallback: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Prefer diagnosis.vehicle_context fields; fill gaps from session vehicle
+    (ChatResponse.vehicle) so attestations match what the user saw.
+    Never includes VIN.
+    """
+    vehicle: dict[str, Any] = {
+        "engine": None,
+        "make": None,
+        "model": None,
+        "year": None,
+    }
+    vc = diagnosis.vehicle_context
+    if vc is not None:
+        vehicle = {
+            "engine": vc.engine,
+            "make": vc.make,
+            "model": vc.model,
+            "year": vc.year,
+        }
+
+    fb = vehicle_fallback or {}
+    for key in ("year", "make", "model", "engine"):
+        if vehicle.get(key) is None and fb.get(key) is not None:
+            vehicle[key] = fb.get(key)
+
+    # Coerce year to int when possible
+    y = vehicle.get("year")
+    if y is not None and not isinstance(y, int):
+        try:
+            vehicle["year"] = int(y)
+        except (TypeError, ValueError):
+            pass
+    return vehicle
+
+
 def build_canonical_payload(
     *,
     diagnosis_id: str,
@@ -40,6 +104,7 @@ def build_canonical_payload(
     locale: str,
     model_version: str = MODEL_VERSION,
     timestamp: str | None = None,
+    vehicle_fallback: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Fixed schema for hashing. Keys will be sorted at serialize time.
@@ -57,20 +122,7 @@ def build_canonical_payload(
         for c in (diagnosis.diagnosis or [])
     ]
 
-    vc = diagnosis.vehicle_context
-    vehicle: dict[str, Any] = {
-        "engine": None,
-        "make": None,
-        "model": None,
-        "year": None,
-    }
-    if vc is not None:
-        vehicle = {
-            "engine": vc.engine,
-            "make": vc.make,
-            "model": vc.model,
-            "year": vc.year,
-        }
+    vehicle = _vehicle_dict_from_sources(diagnosis, vehicle_fallback)
 
     cost_min = diagnosis.cost_min
     cost_max = diagnosis.cost_max
@@ -78,6 +130,13 @@ def build_canonical_payload(
         cost_min = float(cost_min)
     if cost_max is not None:
         cost_max = float(cost_max)
+    # Fallback: parse estimated_cost string when structured min/max absent
+    if cost_min is None or cost_max is None:
+        parsed_lo, parsed_hi = _parse_cost_range_from_text(diagnosis.estimated_cost)
+        if cost_min is None:
+            cost_min = parsed_lo
+        if cost_max is None:
+            cost_max = parsed_hi
 
     return {
         "causes": causes,
@@ -176,10 +235,14 @@ def create_diagnosis_attestation(
     session_id: str,
     diagnosis: DiagnosisPayload,
     locale: str,
+    vehicle_fallback: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """
     Build canonical JSON, SHA-256, persist. Returns summary or None on failure.
     Never raises to callers that want fail-safe behavior (they may still try/except).
+
+    vehicle_fallback: session vehicle dict (year/make/model/engine) when
+    diagnosis.vehicle_context is empty but the chat UI had vehicle context.
     """
     try:
         diagnosis_id = str(uuid.uuid4())
@@ -188,6 +251,7 @@ def create_diagnosis_attestation(
             session_id=session_id,
             diagnosis=diagnosis,
             locale=locale,
+            vehicle_fallback=vehicle_fallback,
         )
         canonical_str, content_hash = compute_content_hash(canonical)
 

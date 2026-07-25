@@ -287,6 +287,8 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
                 session_id=state.session_id,
                 diagnosis=diagnosis_payload,
                 locale=req.language,
+                # Session vehicle is what the UI shows; LLM vehicle_context is often empty
+                vehicle_fallback=state.vehicle,
             )
             if att:
                 content_hash = att.get("content_hash")
