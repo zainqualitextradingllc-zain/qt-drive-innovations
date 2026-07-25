@@ -9,6 +9,36 @@ type Props = {
   searchParams: Promise<{ h?: string }>;
 };
 
+const VEHICLE_PLACEHOLDERS = new Set([
+  "",
+  "unknown",
+  "n/a",
+  "na",
+  "none",
+  "null",
+  "undefined",
+  "not specified",
+  "not provided",
+  "unspecified",
+  "不明",
+  "なし",
+  "未設定",
+]);
+
+function isRealVehiclePart(x: unknown): boolean {
+  if (x === null || x === undefined) return false;
+  if (typeof x === "number") return x >= 1980 && x <= 2100;
+  const s = String(x).trim();
+  if (!s) return false;
+  if (VEHICLE_PLACEHOLDERS.has(s.toLowerCase())) return false;
+  // year-like string "0" or "0000"
+  if (/^\d+$/.test(s)) {
+    const n = parseInt(s, 10);
+    return n >= 1980 && n <= 2100;
+  }
+  return true;
+}
+
 function vehicleLabel(
   v: {
     year?: number | null;
@@ -20,9 +50,7 @@ function vehicleLabel(
   unknown: string
 ): string {
   if (!v) return unknown;
-  const parts = [v.year, v.make, v.model, v.engine].filter(
-    (x) => x !== null && x !== undefined && String(x).trim() !== ""
-  );
+  const parts = [v.year, v.make, v.model, v.engine].filter(isRealVehiclePart);
   return parts.length ? parts.join(" ") : unknown;
 }
 

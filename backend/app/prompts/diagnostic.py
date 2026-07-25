@@ -172,15 +172,9 @@ def build_context_block(
         lines.append(
             f"[SESSION] user_message_language_hint={detected_user_language} — honor FALLBACK language rules."
         )
-    has_vehicle_identity = bool(
-        vehicle
-        and (
-            vehicle.get("make")
-            or vehicle.get("model")
-            or vehicle.get("year")
-            or vehicle.get("vin")
-        )
-    )
+    from app.services.vehicle_identity import has_vehicle_identity as _hvi
+
+    has_vehicle_identity = _hvi(vehicle)
     if vehicle and has_vehicle_identity:
         lines.append(f"[VEHICLE] {vehicle}")
         lines.append("[VEHICLE IDENTITY] known — specific cost ranges OK")

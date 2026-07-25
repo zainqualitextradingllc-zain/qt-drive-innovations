@@ -62,11 +62,14 @@ def _vehicle_dict_from_sources(
     vehicle_fallback: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
-    Prefer diagnosis.vehicle_context fields; fill gaps from session vehicle
-    (ChatResponse.vehicle) so attestations match what the user saw.
+    Prefer diagnosis.vehicle_context fields; fill gaps from session vehicle.
+    Placeholder LLM values (year=0, make='unknown') become null so verify
+    page shows "Not specified" instead of "0 unknown unknown".
     Never includes VIN.
     """
-    vehicle: dict[str, Any] = {
+    from app.services.vehicle_identity import sanitize_vehicle_fields
+
+    base: dict[str, Any] = {
         "engine": None,
         "make": None,
         "model": None,
@@ -74,26 +77,13 @@ def _vehicle_dict_from_sources(
     }
     vc = diagnosis.vehicle_context
     if vc is not None:
-        vehicle = {
-            "engine": vc.engine,
-            "make": vc.make,
-            "model": vc.model,
-            "year": vc.year,
-        }
+        base = sanitize_vehicle_fields(vc.model_dump())
 
-    fb = vehicle_fallback or {}
+    fb = sanitize_vehicle_fields(vehicle_fallback)
     for key in ("year", "make", "model", "engine"):
-        if vehicle.get(key) is None and fb.get(key) is not None:
-            vehicle[key] = fb.get(key)
-
-    # Coerce year to int when possible
-    y = vehicle.get("year")
-    if y is not None and not isinstance(y, int):
-        try:
-            vehicle["year"] = int(y)
-        except (TypeError, ValueError):
-            pass
-    return vehicle
+        if base.get(key) is None and fb.get(key) is not None:
+            base[key] = fb.get(key)
+    return base
 
 
 def build_canonical_payload(

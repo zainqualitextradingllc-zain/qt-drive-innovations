@@ -53,6 +53,26 @@ export function DiagnosisCard({
           <div>{diagnosis.estimated_cost}</div>
         </div>
 
+        {/* Visible generic-cost banner when vehicle was skipped / unknown */}
+        {(() => {
+          const cost = (diagnosis.estimated_cost || "").toLowerCase();
+          const disc = (diagnosis.disclaimer || "").toLowerCase();
+          const isGeneric =
+            cost.includes("generic") ||
+            cost.includes("一般") ||
+            disc.includes("generic") ||
+            disc.includes("一般的な目安") ||
+            disc.includes("cost range is generic");
+          if (!isGeneric) return null;
+          return (
+            <div className="cost-generic-banner" role="note">
+              {locale === "ja"
+                ? "費用は一般的な目安です。メーカー・車種・年式があると精度が上がります。"
+                : "Cost range is generic — provide vehicle make/model/year for a more accurate estimate."}
+            </div>
+          );
+        })()}
+
         <div className="meta-block">
           <label>{t("diagnosis.nextAction")}</label>
           <div>{diagnosis.next_action}</div>

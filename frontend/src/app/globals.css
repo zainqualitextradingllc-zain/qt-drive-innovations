@@ -592,6 +592,18 @@ textarea {
   opacity: 0.9;
 }
 
+.cost-generic-banner {
+  margin: 0.15rem 0 0.35rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #fde68a;
+  background: rgba(212, 160, 23, 0.14);
+  border: 1px solid rgba(212, 160, 23, 0.45);
+}
+
 /* Phase 4a.0 public verify page */
 .verify-page {
   min-height: 100vh;

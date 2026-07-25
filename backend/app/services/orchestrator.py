@@ -69,15 +69,10 @@ def _count_symptom_questions(state: SessionState) -> int:
 
 
 def _has_vehicle_identity(vehicle: dict[str, Any] | None) -> bool:
-    """True if make/model/year or VIN is present (enough for a non-generic cost)."""
-    if not vehicle:
-        return False
-    return bool(
-        vehicle.get("make")
-        or vehicle.get("model")
-        or vehicle.get("year")
-        or vehicle.get("vin")
-    )
+    """True if make/model/year or VIN look real (not 'unknown' / year=0)."""
+    from app.services.vehicle_identity import has_vehicle_identity
+
+    return has_vehicle_identity(vehicle)
 
 
 def _apply_generic_cost_if_no_vehicle(
@@ -89,13 +84,22 @@ def _apply_generic_cost_if_no_vehicle(
     """
     Soft enforcement: without vehicle identity, do not present a tight catalog cost
     as vehicle-accurate. Widen numeric range when possible and add a clear disclaimer.
+
+    Also strips LLM placeholder vehicle_context (year=0, make='unknown', …).
     """
-    if _has_vehicle_identity(vehicle) or _has_vehicle_identity(
+    from app.services.vehicle_identity import has_vehicle_identity
+
+    session_known = has_vehicle_identity(vehicle)
+    ctx_known = has_vehicle_identity(
         diagnosis.vehicle_context.model_dump() if diagnosis.vehicle_context else None
-    ):
+    )
+    if session_known or ctx_known:
         return diagnosis
 
     data = diagnosis.model_dump()
+    # Clear placeholder vehicle so UI/verify don't show "0 unknown unknown"
+    data["vehicle_context"] = None
+
     disclaimer_en = (
         "Cost range is generic — provide vehicle make/model/year for a more accurate estimate."
     )
@@ -105,6 +109,16 @@ def _apply_generic_cost_if_no_vehicle(
     note = disclaimer_ja if language == "ja" else disclaimer_en
 
     lo, hi = data.get("cost_min"), data.get("cost_max")
+    # Parse estimated_cost if structured min/max missing
+    if lo is None or hi is None:
+        from app.services.attestation import _parse_cost_range_from_text
+
+        plo, phi = _parse_cost_range_from_text(data.get("estimated_cost"))
+        if lo is None:
+            lo = plo
+        if hi is None:
+            hi = phi
+
     if lo is not None and hi is not None:
         try:
             lo_f, hi_f = float(lo), float(hi)
@@ -124,21 +138,32 @@ def _apply_generic_cost_if_no_vehicle(
                     f"{int(new_lo)}-{int(new_hi)} USD (generic range)"
                 )
         except (TypeError, ValueError):
-            pass
+            ec = str(data.get("estimated_cost") or "")
+            if language == "ja" and "一般" not in ec:
+                data["estimated_cost"] = f"{ec}（一般的な目安）".strip()
+            elif language != "ja" and "generic" not in ec.lower():
+                data["estimated_cost"] = f"{ec} (generic range)".strip()
     else:
-        # String-only cost: append generic marker
         ec = str(data.get("estimated_cost") or "")
         if language == "ja" and "一般" not in ec:
             data["estimated_cost"] = f"{ec}（一般的な目安）".strip()
         elif language != "ja" and "generic" not in ec.lower():
             data["estimated_cost"] = f"{ec} (generic range)".strip()
 
+    # Put generic note first so it is visible on the diagnosis card disclaimer line
     disc = str(data.get("disclaimer") or "")
     if note not in disc:
-        data["disclaimer"] = f"{disc} {note}".strip() if disc else note
+        data["disclaimer"] = f"{note} {disc}".strip() if disc else note
     na = str(data.get("next_action") or "")
     if note not in na:
         data["next_action"] = f"{na} {note}".strip() if na else note
+
+    # Ensure estimate string always carries the visible generic marker
+    ec2 = str(data.get("estimated_cost") or "")
+    if language == "ja" and "一般" not in ec2:
+        data["estimated_cost"] = f"{ec2}（一般的な目安）".strip()
+    elif language != "ja" and "generic" not in ec2.lower():
+        data["estimated_cost"] = f"{ec2} (generic range)".strip()
 
     return DiagnosisPayload.model_validate(data)
 
