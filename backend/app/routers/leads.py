@@ -56,27 +56,49 @@ async def fire_lead_captured(
     settings = get_settings()
     key = (settings.posthog_key or "").strip()
     if not key or settings._is_placeholder(key):
-        logger.debug("PostHog key not configured; skip lead_captured")
+        logger.warning(
+            "PostHog key not configured; skip lead_captured for session %s",
+            session_id,
+        )
         return
 
+    payload = {
+        "api_key": key,
+        "event": "lead_captured",
+        "distinct_id": session_id,
+        "properties": {
+            "session_id": session_id,
+            "contact_method": contact_method,
+            "diagnosis_category": diagnosis_category,
+            "locale": locale,
+            "source": "railway_leads_router",
+        },
+    }
+
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            await client.post(
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.post(
                 "https://us.i.posthog.com/capture/",
-                json={
-                    "api_key": key,
-                    "event": "lead_captured",
-                    "distinct_id": session_id,
-                    "properties": {
-                        "session_id": session_id,
-                        "contact_method": contact_method,
-                        "diagnosis_category": diagnosis_category,
-                        "locale": locale,
-                    },
-                },
+                json=payload,
             )
+            if resp.status_code >= 300:
+                logger.warning(
+                    "PostHog lead_captured rejected session=%s status=%s body=%s key_suffix=%s",
+                    session_id,
+                    resp.status_code,
+                    (resp.text or "")[:200],
+                    key[-6:] if len(key) >= 6 else "?",
+                )
+            else:
+                logger.info(
+                    "PostHog lead_captured ok session=%s status=%s",
+                    session_id,
+                    resp.status_code,
+                )
     except Exception:
-        logger.warning("PostHog capture failed for session %s", session_id, exc_info=True)
+        logger.warning(
+            "PostHog capture failed for session %s", session_id, exc_info=True
+        )
 
 
 def _save_lead_row(payload: LeadPayload) -> bool:

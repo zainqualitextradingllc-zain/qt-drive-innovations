@@ -25,6 +25,10 @@ async def health():
     posthog_configured = bool(posthog_key) and not settings._is_placeholder(
         posthog_key
     )
+    # Last 6 chars only — enough to confirm Railway matches Vercel without leaking the key
+    posthog_key_suffix = (
+        posthog_key[-6:] if posthog_configured and len(posthog_key) >= 6 else None
+    )
 
     return {
         "status": "ok",
@@ -36,6 +40,7 @@ async def health():
         "supabase_configured": settings.supabase_configured,
         "database_configured": settings.database_configured,
         "posthog_configured": posthog_configured,
+        "posthog_key_suffix": posthog_key_suffix,
         "rag_via": rag_via,
         "use_mock_llm": use_mock,
     }

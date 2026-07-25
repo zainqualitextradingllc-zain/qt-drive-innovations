@@ -63,6 +63,7 @@ def main() -> int:
     health = get_json(f"{api}/health")
     print(json.dumps(health, indent=2))
     ph = health.get("posthog_configured")
+    suffix = health.get("posthog_key_suffix")
     if ph is None:
         print(
             "WARN: posthog_configured missing — deploy latest health.py first",
@@ -76,15 +77,20 @@ def main() -> int:
         )
         return 2
     else:
-        print("OK: posthog_configured=true")
+        print(f"OK: posthog_configured=true key_suffix=…{suffix}")
 
-    sid = f"railway-ph-verify-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+    # IMPORTANT: this call is SERVER-ONLY. We intentionally do NOT also POST
+    # to PostHog from this script. If lead_captured never appears for `sid`,
+    # Railway POSTHOG_KEY is wrong, missing, or capture is failing.
+    # (Do not confuse with older live-verify-lead-* IDs that were dual-fired
+    # from the client-side capture script.)
+    sid = f"server-only-lead-{int(time.time())}-{uuid.uuid4().hex[:8]}"
     email = (
         f"keep-{sid[:12]}@qualitex-trading.com"
         if args.keep_row
         else f"railway-verify-{uuid.uuid4().hex[:8]}@example.com"
     )
-    print("\n=== LEAD CAPTURE (server should emit lead_captured) ===")
+    print("\n=== LEAD CAPTURE (Railway background task → PostHog only) ===")
     status, body = post_json(
         f"{api}/leads/capture",
         {
@@ -100,11 +106,16 @@ def main() -> int:
         print("FAIL: leads capture", file=sys.stderr)
         return 1
 
-    print("\n=== PostHog Live Events ===")
-    print("Look for event: lead_captured")
-    print(f"distinct_id / session_id: {sid}")
-    print("properties: contact_method=email, diagnosis_category=brakes, locale=en")
-    print("(no contact_value is sent to PostHog — PII stays in diagnostic_leads only)")
+    print("\n=== PostHog Live Events (server-only proof) ===")
+    print("Event name:  lead_captured")
+    print(f"distinct_id: {sid}")
+    print("properties:  source=railway_leads_router (after latest deploy)")
+    print("             contact_method=email, diagnosis_category=brakes, locale=en")
+    print("PII is NOT sent to PostHog (only stored in diagnostic_leads).")
+    print()
+    print("If this exact distinct_id never appears within ~1–2 minutes:")
+    print("  → Railway POSTHOG_KEY does not match Vercel NEXT_PUBLIC_POSTHOG_KEY")
+    print("    (or PostHog is rejecting the key). Fix in Railway → Variables.")
     if not args.keep_row:
         print(
             "\nNote: this test used @example.com — run cleanup_test_leads.py afterwards."
