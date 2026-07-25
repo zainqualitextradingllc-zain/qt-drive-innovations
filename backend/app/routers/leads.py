@@ -58,7 +58,8 @@ async def fire_lead_captured(
     Returns a small diagnostic dict (no full key) for API/logs.
     """
     settings = get_settings()
-    key = (settings.posthog_key or "").strip()
+    # Strip quotes — Railway env UI sometimes saves POSTHOG_KEY="phc_..."
+    key = (settings.posthog_key or "").strip().strip('"').strip("'")
     key_suffix = key[-6:] if len(key) >= 6 else None
     # e.g. phc_w49d4Y…fcMjMH — enough to match Vercel without exposing the full token
     key_fingerprint = (
