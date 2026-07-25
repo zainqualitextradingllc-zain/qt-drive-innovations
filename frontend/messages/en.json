@@ -64,8 +64,8 @@
     "submit": "Send",
     "submitting": "Sending…",
     "success": "Thanks — we’ll follow up shortly.",
-    "verifyBlurb": "Your diagnosis record has been saved with a tamper-evident cryptographic hash. Verify it anytime:",
-    "verifyLinkLabel": "Verify this diagnosis",
+    "verifyBlurb": "Your diagnosis record has been saved with a tamper-evident fingerprint for your records. Verify: <url></url>",
+    "verifyLinkLabel": "Verify",
     "error": "Could not submit. Please try again."
   },
   "verify": {

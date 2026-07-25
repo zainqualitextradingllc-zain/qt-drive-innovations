@@ -222,39 +222,84 @@ def create_diagnosis_attestation(
                     content_hash[:16],
                 )
 
+        result = {
+            "diagnosis_id": diagnosis_id,
+            "content_hash": content_hash,
+            "canonical_json": canonical,
+            "canonical_json_str": canonical_str,
+            "persisted": saved,
+            "anchor_status": "hashed",
+        }
+
         if not saved:
             logger.warning(
                 "attestation not persisted (no DB); session=%s hash=%s",
                 session_id,
                 content_hash[:16],
             )
-            # Still return hash so UI can show verify URL once row exists, or for logging
-            return {
-                "diagnosis_id": diagnosis_id,
-                "content_hash": content_hash,
-                "canonical_json": canonical,
-                "canonical_json_str": canonical_str,
-                "persisted": False,
-                "anchor_status": "hashed",
-            }
+        else:
+            logger.info(
+                "attestation saved session=%s diagnosis_id=%s hash=%s",
+                session_id,
+                diagnosis_id,
+                content_hash[:16],
+            )
 
-        logger.info(
-            "attestation saved session=%s diagnosis_id=%s hash=%s",
-            session_id,
-            diagnosis_id,
-            content_hash[:16],
-        )
-        return {
-            "diagnosis_id": diagnosis_id,
-            "content_hash": content_hash,
-            "canonical_json": canonical,
-            "canonical_json_str": canonical_str,
-            "persisted": True,
-            "anchor_status": "hashed",
-        }
+        # PostHog: diagnosis_attested only (never touches lead_captured). Fail-safe.
+        try:
+            _fire_diagnosis_attested(
+                session_id=session_id,
+                diagnosis_id=diagnosis_id,
+                content_hash=content_hash,
+            )
+        except Exception:
+            logger.warning(
+                "diagnosis_attested PostHog fire failed session=%s",
+                session_id,
+                exc_info=True,
+            )
+
+        return result
     except Exception:
         logger.exception("create_diagnosis_attestation failed session=%s", session_id)
         return None
+
+
+def _fire_diagnosis_attested(
+    *,
+    session_id: str,
+    diagnosis_id: str,
+    content_hash: str,
+) -> None:
+    """Fire-and-forget PostHog diagnosis_attested (sync httpx; fail-safe)."""
+    settings = get_settings()
+    key = (settings.posthog_key or "").strip().strip('"').strip("'")
+    if not key or settings._is_placeholder(key):
+        return
+    try:
+        import httpx
+
+        from app import __version__
+
+        prefix = (content_hash or "")[:8]
+        with httpx.Client(timeout=5.0) as client:
+            client.post(
+                "https://us.i.posthog.com/capture/",
+                json={
+                    "api_key": key,
+                    "event": "diagnosis_attested",
+                    "distinct_id": session_id,
+                    "properties": {
+                        "diagnosis_id": diagnosis_id,
+                        "content_hash_prefix": prefix,
+                        "$lib": "qt-drive-innovations-api",
+                        "$lib_version": __version__,
+                        "source": "attestation_service",
+                    },
+                },
+            )
+    except Exception:
+        logger.debug("diagnosis_attested capture error", exc_info=True)
 
 
 def fetch_attestation_by_hash(content_hash: str) -> dict[str, Any] | None:

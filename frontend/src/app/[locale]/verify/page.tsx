@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/routing";
+import { VerifyAnalytics } from "@/components/VerifyAnalytics";
 import { verifyAttestation } from "@/lib/api";
 import type { Locale } from "@/types/diagnosis";
 
@@ -36,6 +37,7 @@ export default async function VerifyPage({ params, searchParams }: Props) {
   if (!hash) {
     return (
       <main className="verify-page">
+        <VerifyAnalytics contentHash="" result="missing_hash" />
         <div className="verify-card">
           <h1>{t("title")}</h1>
           <p className="verify-sub">{t("subtitle")}</p>
@@ -58,6 +60,8 @@ export default async function VerifyPage({ params, searchParams }: Props) {
 
   const valid = Boolean(data?.valid);
   const summary = data?.summary;
+  const analyticsResult =
+    error || !data ? "not_found" : valid ? "match" : "mismatch";
   const onChainMsg =
     locale === "ja"
       ? data?.on_chain?.message_ja || t("onChain")
@@ -65,6 +69,7 @@ export default async function VerifyPage({ params, searchParams }: Props) {
 
   return (
     <main className="verify-page">
+      <VerifyAnalytics contentHash={hash} result={analyticsResult} />
       <div className="verify-card">
         <h1>{t("title")}</h1>
         <p className="verify-sub">{t("subtitle")}</p>

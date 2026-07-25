@@ -87,17 +87,21 @@ export function LeadCapture({
   }
 
   if (done) {
+    // Exact EN/JA copy with <url></url> rich placeholder for the verify link
+    const verifyParts = verifyLink
+      ? t.rich("verifyBlurb", {
+          url: () => (
+            <a href={verifyLink} target="_blank" rel="noopener noreferrer">
+              {verifyLink}
+            </a>
+          ),
+        })
+      : null;
+
     return (
       <div className="lead-capture lead-success" role="status">
         <p className="lead-success-main">{t("success")}</p>
-        {verifyLink ? (
-          <p className="lead-verify-blurb">
-            {t("verifyBlurb")}{" "}
-            <a href={verifyLink} target="_blank" rel="noopener noreferrer">
-              {t("verifyLinkLabel")}
-            </a>
-          </p>
-        ) : null}
+        {verifyParts ? <p className="lead-verify-blurb">{verifyParts}</p> : null}
       </div>
     );
   }
