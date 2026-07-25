@@ -9,6 +9,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
+from app import __version__
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,10 @@ async def fire_lead_captured(
     settings = get_settings()
     key = (settings.posthog_key or "").strip()
     key_suffix = key[-6:] if len(key) >= 6 else None
+    # e.g. phc_w49d4Y…fcMjMH — enough to match Vercel without exposing the full token
+    key_fingerprint = (
+        f"{key[:10]}…{key[-6:]}" if key.startswith("phc_") and len(key) >= 20 else None
+    )
 
     if not key or settings._is_placeholder(key):
         # WARNING so it always shows in Railway default log level
@@ -71,6 +76,8 @@ async def fire_lead_captured(
             "ok": False,
             "reason": "key_missing_or_placeholder",
             "key_suffix": None,
+            "key_fingerprint": None,
+            "key_length": len(key) if key else 0,
             "http_status": None,
             "response_body": None,
         }
@@ -85,6 +92,8 @@ async def fire_lead_captured(
             "diagnosis_category": diagnosis_category,
             "locale": locale,
             "source": "railway_leads_router",
+            "$lib": "qt-drive-innovations-api",
+            "$lib_version": __version__,
         },
     }
 
@@ -99,11 +108,12 @@ async def fire_lead_captured(
             # Always WARNING so Railway surfaces the line without raising log level
             logger.warning(
                 "PostHog lead_captured result session=%s ok=%s http_status=%s "
-                "key_suffix=%s body=%s",
+                "key_fingerprint=%s key_len=%s body=%s",
                 session_id,
                 ok,
                 resp.status_code,
-                key_suffix,
+                key_fingerprint,
+                len(key),
                 body_snip,
             )
             return {
@@ -111,14 +121,21 @@ async def fire_lead_captured(
                 "ok": ok,
                 "reason": None if ok else "http_error",
                 "key_suffix": key_suffix,
+                "key_fingerprint": key_fingerprint,
+                "key_length": len(key),
                 "http_status": resp.status_code,
                 "response_body": body_snip,
+                # Note: PostHog often returns 200 Ok even for bad keys — not proof of ingestion
+                "posthog_status_note": (
+                    "HTTP 200 Ok from capture does not guarantee the event is visible "
+                    "in your project; confirm key_fingerprint matches Vercel NEXT_PUBLIC_POSTHOG_KEY"
+                ),
             }
     except Exception as exc:
         logger.warning(
-            "PostHog lead_captured EXCEPTION session=%s key_suffix=%s err=%s",
+            "PostHog lead_captured EXCEPTION session=%s key_fingerprint=%s err=%s",
             session_id,
-            key_suffix,
+            key_fingerprint,
             exc,
             exc_info=True,
         )
@@ -127,6 +144,8 @@ async def fire_lead_captured(
             "ok": False,
             "reason": "exception",
             "key_suffix": key_suffix,
+            "key_fingerprint": key_fingerprint,
+            "key_length": len(key),
             "http_status": None,
             "response_body": str(exc)[:200],
         }

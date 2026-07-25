@@ -33,6 +33,13 @@ async def health():
     posthog_key_suffix = (
         posthog_key[-6:] if posthog_configured and len(posthog_key) >= 6 else None
     )
+    posthog_key_fingerprint = (
+        f"{posthog_key[:10]}…{posthog_key[-6:]}"
+        if posthog_configured
+        and posthog_key.startswith("phc_")
+        and len(posthog_key) >= 20
+        else None
+    )
 
     return {
         "status": "ok",
@@ -45,6 +52,8 @@ async def health():
         "database_configured": settings.database_configured,
         "posthog_configured": posthog_configured,
         "posthog_key_suffix": posthog_key_suffix,
+        "posthog_key_fingerprint": posthog_key_fingerprint,
+        "posthog_key_length": len(posthog_key) if posthog_configured else 0,
         "rag_via": rag_via,
         "use_mock_llm": use_mock,
     }
@@ -59,11 +68,15 @@ async def health_posthog():
     settings = get_settings()
     key = (settings.posthog_key or "").strip()
     key_suffix = key[-6:] if len(key) >= 6 else None
+    key_fingerprint = (
+        f"{key[:10]}…{key[-6:]}" if key.startswith("phc_") and len(key) >= 20 else None
+    )
     if not key or settings._is_placeholder(key):
         return {
             "status": "error",
             "posthog_configured": False,
             "key_suffix": None,
+            "key_fingerprint": None,
             "detail": "POSTHOG_KEY missing or placeholder on this process",
         }
 
@@ -81,6 +94,8 @@ async def health_posthog():
             "diagnosis_category": "health_probe",
             "locale": "en",
             "source": "railway_health_posthog_probe",
+            "$lib": "qt-drive-innovations-api",
+            "$lib_version": __version__,
         },
     }
     try:
@@ -91,26 +106,32 @@ async def health_posthog():
             )
         body = (resp.text or "")[:200]
         logger.warning(
-            "PostHog health probe session=%s http_status=%s key_suffix=%s body=%s",
+            "PostHog health probe session=%s http_status=%s key_fingerprint=%s body=%s",
             sid,
             resp.status_code,
-            key_suffix,
+            key_fingerprint,
             body,
         )
         return {
             "status": "ok" if resp.status_code < 300 else "error",
             "posthog_configured": True,
             "key_suffix": key_suffix,
+            "key_fingerprint": key_fingerprint,
+            "key_length": len(key),
             "http_status": resp.status_code,
             "response_body": body,
             "probe_session_id": sid,
             "event": "lead_captured",
             "source": "railway_health_posthog_probe",
+            "note": (
+                "PostHog often returns HTTP 200 even for invalid keys. "
+                "Visibility in Live Events is the real proof."
+            ),
         }
     except Exception as exc:
         logger.warning(
-            "PostHog health probe EXCEPTION key_suffix=%s err=%s",
-            key_suffix,
+            "PostHog health probe EXCEPTION key_fingerprint=%s err=%s",
+            key_fingerprint,
             exc,
             exc_info=True,
         )
@@ -118,6 +139,8 @@ async def health_posthog():
             "status": "error",
             "posthog_configured": True,
             "key_suffix": key_suffix,
+            "key_fingerprint": key_fingerprint,
+            "key_length": len(key),
             "http_status": None,
             "response_body": str(exc)[:200],
             "probe_session_id": None,
