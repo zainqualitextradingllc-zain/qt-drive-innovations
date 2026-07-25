@@ -1,8 +1,12 @@
+import logging
+
+import httpx
 from fastapi import APIRouter
 
 from app import __version__
 from app.config import get_settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 
 
@@ -44,3 +48,78 @@ async def health():
         "rag_via": rag_via,
         "use_mock_llm": use_mock,
     }
+
+
+@router.get("/health/posthog")
+async def health_posthog():
+    """
+    Live probe: send a synthetic lead_captured from this Railway process.
+    Use to verify outbound PostHog without Railway CLI log access.
+    """
+    settings = get_settings()
+    key = (settings.posthog_key or "").strip()
+    key_suffix = key[-6:] if len(key) >= 6 else None
+    if not key or settings._is_placeholder(key):
+        return {
+            "status": "error",
+            "posthog_configured": False,
+            "key_suffix": None,
+            "detail": "POSTHOG_KEY missing or placeholder on this process",
+        }
+
+    import time
+    import uuid
+
+    sid = f"health-probe-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+    payload = {
+        "api_key": key,
+        "event": "lead_captured",
+        "distinct_id": sid,
+        "properties": {
+            "session_id": sid,
+            "contact_method": "email",
+            "diagnosis_category": "health_probe",
+            "locale": "en",
+            "source": "railway_health_posthog_probe",
+        },
+    }
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.post(
+                "https://us.i.posthog.com/capture/",
+                json=payload,
+            )
+        body = (resp.text or "")[:200]
+        logger.warning(
+            "PostHog health probe session=%s http_status=%s key_suffix=%s body=%s",
+            sid,
+            resp.status_code,
+            key_suffix,
+            body,
+        )
+        return {
+            "status": "ok" if resp.status_code < 300 else "error",
+            "posthog_configured": True,
+            "key_suffix": key_suffix,
+            "http_status": resp.status_code,
+            "response_body": body,
+            "probe_session_id": sid,
+            "event": "lead_captured",
+            "source": "railway_health_posthog_probe",
+        }
+    except Exception as exc:
+        logger.warning(
+            "PostHog health probe EXCEPTION key_suffix=%s err=%s",
+            key_suffix,
+            exc,
+            exc_info=True,
+        )
+        return {
+            "status": "error",
+            "posthog_configured": True,
+            "key_suffix": key_suffix,
+            "http_status": None,
+            "response_body": str(exc)[:200],
+            "probe_session_id": None,
+            "detail": "exception calling PostHog from Railway",
+        }

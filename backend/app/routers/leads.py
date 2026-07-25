@@ -51,16 +51,29 @@ async def fire_lead_captured(
     contact_method: str,
     diagnosis_category: str,
     locale: str,
-) -> None:
-    """Fire-and-forget — never blocks the lead-save response."""
+) -> dict:
+    """
+    Send lead_captured to PostHog (no PII).
+    Returns a small diagnostic dict (no full key) for API/logs.
+    """
     settings = get_settings()
     key = (settings.posthog_key or "").strip()
+    key_suffix = key[-6:] if len(key) >= 6 else None
+
     if not key or settings._is_placeholder(key):
+        # WARNING so it always shows in Railway default log level
         logger.warning(
-            "PostHog key not configured; skip lead_captured for session %s",
+            "PostHog lead_captured SKIPPED session=%s reason=key_missing_or_placeholder",
             session_id,
         )
-        return
+        return {
+            "attempted": False,
+            "ok": False,
+            "reason": "key_missing_or_placeholder",
+            "key_suffix": None,
+            "http_status": None,
+            "response_body": None,
+        }
 
     payload = {
         "api_key": key,
@@ -81,24 +94,42 @@ async def fire_lead_captured(
                 "https://us.i.posthog.com/capture/",
                 json=payload,
             )
-            if resp.status_code >= 300:
-                logger.warning(
-                    "PostHog lead_captured rejected session=%s status=%s body=%s key_suffix=%s",
-                    session_id,
-                    resp.status_code,
-                    (resp.text or "")[:200],
-                    key[-6:] if len(key) >= 6 else "?",
-                )
-            else:
-                logger.info(
-                    "PostHog lead_captured ok session=%s status=%s",
-                    session_id,
-                    resp.status_code,
-                )
-    except Exception:
+            body_snip = (resp.text or "")[:200]
+            ok = resp.status_code < 300
+            # Always WARNING so Railway surfaces the line without raising log level
+            logger.warning(
+                "PostHog lead_captured result session=%s ok=%s http_status=%s "
+                "key_suffix=%s body=%s",
+                session_id,
+                ok,
+                resp.status_code,
+                key_suffix,
+                body_snip,
+            )
+            return {
+                "attempted": True,
+                "ok": ok,
+                "reason": None if ok else "http_error",
+                "key_suffix": key_suffix,
+                "http_status": resp.status_code,
+                "response_body": body_snip,
+            }
+    except Exception as exc:
         logger.warning(
-            "PostHog capture failed for session %s", session_id, exc_info=True
+            "PostHog lead_captured EXCEPTION session=%s key_suffix=%s err=%s",
+            session_id,
+            key_suffix,
+            exc,
+            exc_info=True,
         )
+        return {
+            "attempted": True,
+            "ok": False,
+            "reason": "exception",
+            "key_suffix": key_suffix,
+            "http_status": None,
+            "response_body": str(exc)[:200],
+        }
 
 
 def _save_lead_row(payload: LeadPayload) -> bool:
@@ -167,16 +198,21 @@ async def capture_lead(payload: LeadPayload):
         raise HTTPException(status_code=422, detail="invalid email format")
 
     # 1. PII source of truth (Postgres / Supabase when configured)
-    _save_lead_row(payload)
+    saved = _save_lead_row(payload)
 
     # 2. Funnel signal only (no contact_value).
     # Awaited (not BackgroundTasks) so Railway workers cannot drop the PostHog
     # call after the HTTP response is already sent.
-    await fire_lead_captured(
+    posthog = await fire_lead_captured(
         payload.session_id,
         payload.contact_method,
         payload.diagnosis_category,
         payload.locale,
     )
 
-    return {"status": "captured"}
+    # posthog diagnostic is safe (suffix only, no full key / no PII)
+    return {
+        "status": "captured",
+        "lead_saved": saved,
+        "posthog": posthog,
+    }
