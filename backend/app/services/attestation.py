@@ -310,12 +310,14 @@ def create_diagnosis_attestation(
             )
 
         # PostHog: diagnosis_attested only (never touches lead_captured). Fail-safe.
+        # Always log at WARNING so Railway default logs show fire + response.
         try:
-            _fire_diagnosis_attested(
+            ph = fire_diagnosis_attested(
                 session_id=session_id,
                 diagnosis_id=diagnosis_id,
                 content_hash=content_hash,
             )
+            result["posthog_diagnosis_attested"] = ph
         except Exception:
             logger.warning(
                 "diagnosis_attested PostHog fire failed session=%s",
@@ -329,41 +331,123 @@ def create_diagnosis_attestation(
         return None
 
 
-def _fire_diagnosis_attested(
+def _resolve_posthog_key() -> str:
+    """Same project token as frontend when possible (POSTHOG_KEY or NEXT_PUBLIC_*)."""
+    import os
+
+    settings = get_settings()
+    candidates = [
+        (settings.posthog_key or "").strip().strip('"').strip("'"),
+        (os.environ.get("POSTHOG_KEY") or "").strip().strip('"').strip("'"),
+        (os.environ.get("NEXT_PUBLIC_POSTHOG_KEY") or "").strip().strip('"').strip("'"),
+    ]
+    for key in candidates:
+        if key and not settings._is_placeholder(key):
+            return key
+    return ""
+
+
+def fire_diagnosis_attested(
     *,
     session_id: str,
     diagnosis_id: str,
     content_hash: str,
-) -> None:
-    """Fire-and-forget PostHog diagnosis_attested (sync httpx; fail-safe)."""
-    settings = get_settings()
-    key = (settings.posthog_key or "").strip().strip('"').strip("'")
-    if not key or settings._is_placeholder(key):
-        return
+) -> dict[str, Any]:
+    """
+    Capture diagnosis_attested to PostHog US host (same as lead_captured / browser).
+    Temporary verbose WARNING logs for production debugging.
+    """
+    import httpx
+
+    from app import __version__
+
+    key = _resolve_posthog_key()
+    prefix = (content_hash or "")[:8]
+    key_suffix = key[-6:] if len(key) >= 6 else None
+    host = "https://us.i.posthog.com/capture/"
+
+    if not key:
+        logger.warning(
+            "diagnosis_attested SKIPPED session=%s diagnosis_id=%s "
+            "reason=no_posthog_key host=%s prefix=%s",
+            session_id,
+            diagnosis_id,
+            host,
+            prefix,
+        )
+        return {
+            "attempted": False,
+            "ok": False,
+            "reason": "no_posthog_key",
+            "http_status": None,
+            "response_body": None,
+            "key_suffix": None,
+            "host": host,
+            "content_hash_prefix": prefix,
+        }
+
+    payload = {
+        "api_key": key,
+        "event": "diagnosis_attested",
+        "distinct_id": session_id,
+        "properties": {
+            "diagnosis_id": diagnosis_id,
+            "content_hash_prefix": prefix,
+            "session_id": session_id,
+            "$lib": "qt-drive-innovations-api",
+            "$lib_version": __version__,
+            "source": "attestation_service",
+        },
+    }
+
     try:
-        import httpx
-
-        from app import __version__
-
-        prefix = (content_hash or "")[:8]
-        with httpx.Client(timeout=5.0) as client:
-            client.post(
-                "https://us.i.posthog.com/capture/",
-                json={
-                    "api_key": key,
-                    "event": "diagnosis_attested",
-                    "distinct_id": session_id,
-                    "properties": {
-                        "diagnosis_id": diagnosis_id,
-                        "content_hash_prefix": prefix,
-                        "$lib": "qt-drive-innovations-api",
-                        "$lib_version": __version__,
-                        "source": "attestation_service",
-                    },
-                },
-            )
-    except Exception:
-        logger.debug("diagnosis_attested capture error", exc_info=True)
+        with httpx.Client(timeout=8.0) as client:
+            resp = client.post(host, json=payload)
+        body = (resp.text or "")[:200]
+        ok = resp.status_code < 300
+        logger.warning(
+            "diagnosis_attested RESULT session=%s diagnosis_id=%s ok=%s "
+            "http_status=%s key_suffix=%s host=%s prefix=%s body=%s",
+            session_id,
+            diagnosis_id,
+            ok,
+            resp.status_code,
+            key_suffix,
+            host,
+            prefix,
+            body,
+        )
+        return {
+            "attempted": True,
+            "ok": ok,
+            "reason": None if ok else "http_error",
+            "http_status": resp.status_code,
+            "response_body": body,
+            "key_suffix": key_suffix,
+            "host": host,
+            "content_hash_prefix": prefix,
+        }
+    except Exception as exc:
+        logger.warning(
+            "diagnosis_attested EXCEPTION session=%s diagnosis_id=%s "
+            "key_suffix=%s host=%s err=%s",
+            session_id,
+            diagnosis_id,
+            key_suffix,
+            host,
+            exc,
+            exc_info=True,
+        )
+        return {
+            "attempted": True,
+            "ok": False,
+            "reason": "exception",
+            "http_status": None,
+            "response_body": str(exc)[:200],
+            "key_suffix": key_suffix,
+            "host": host,
+            "content_hash_prefix": prefix,
+        }
 
 
 def fetch_attestation_by_hash(content_hash: str) -> dict[str, Any] | None:

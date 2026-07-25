@@ -171,6 +171,14 @@ export function ChatInterface() {
           turns_to_diagnosis: userTurnCountRef.current,
           locale,
         });
+        // Client backup for diagnosis_attested (server also fires; do not modify lead_captured)
+        if (res.content_hash) {
+          captureEvent("diagnosis_attested", {
+            diagnosis_id: res.diagnosis_id || "",
+            content_hash_prefix: res.content_hash.slice(0, 8),
+            source: "frontend_chat_interface",
+          });
+        }
         // cta_shown is fired by LeadCapture mount
       }
     } catch {

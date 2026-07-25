@@ -68,6 +68,81 @@ def _count_symptom_questions(state: SessionState) -> int:
     return state.questions_asked_count
 
 
+def _has_vehicle_identity(vehicle: dict[str, Any] | None) -> bool:
+    """True if make/model/year or VIN is present (enough for a non-generic cost)."""
+    if not vehicle:
+        return False
+    return bool(
+        vehicle.get("make")
+        or vehicle.get("model")
+        or vehicle.get("year")
+        or vehicle.get("vin")
+    )
+
+
+def _apply_generic_cost_if_no_vehicle(
+    diagnosis: DiagnosisPayload,
+    *,
+    vehicle: dict[str, Any] | None,
+    language: str,
+) -> DiagnosisPayload:
+    """
+    Soft enforcement: without vehicle identity, do not present a tight catalog cost
+    as vehicle-accurate. Widen numeric range when possible and add a clear disclaimer.
+    """
+    if _has_vehicle_identity(vehicle) or _has_vehicle_identity(
+        diagnosis.vehicle_context.model_dump() if diagnosis.vehicle_context else None
+    ):
+        return diagnosis
+
+    data = diagnosis.model_dump()
+    disclaimer_en = (
+        "Cost range is generic — provide vehicle make/model/year for a more accurate estimate."
+    )
+    disclaimer_ja = (
+        "費用は一般的な目安です。メーカー・車種・年式があると精度が上がります。"
+    )
+    note = disclaimer_ja if language == "ja" else disclaimer_en
+
+    lo, hi = data.get("cost_min"), data.get("cost_max")
+    if lo is not None and hi is not None:
+        try:
+            lo_f, hi_f = float(lo), float(hi)
+            if lo_f > hi_f:
+                lo_f, hi_f = hi_f, lo_f
+            # Widen substantially (economy↔luxury band) without collapsing to $0
+            new_lo = max(0.0, lo_f * 0.5)
+            new_hi = max(hi_f * 2.5, new_lo + 100.0)
+            data["cost_min"] = round(new_lo, 0)
+            data["cost_max"] = round(new_hi, 0)
+            if data.get("currency") == "JPY" or language == "ja":
+                data["estimated_cost"] = (
+                    f"{int(new_lo):,}〜{int(new_hi):,}円（一般的な目安）"
+                )
+            else:
+                data["estimated_cost"] = (
+                    f"{int(new_lo)}-{int(new_hi)} USD (generic range)"
+                )
+        except (TypeError, ValueError):
+            pass
+    else:
+        # String-only cost: append generic marker
+        ec = str(data.get("estimated_cost") or "")
+        if language == "ja" and "一般" not in ec:
+            data["estimated_cost"] = f"{ec}（一般的な目安）".strip()
+        elif language != "ja" and "generic" not in ec.lower():
+            data["estimated_cost"] = f"{ec} (generic range)".strip()
+
+    disc = str(data.get("disclaimer") or "")
+    if note not in disc:
+        data["disclaimer"] = f"{disc} {note}".strip() if disc else note
+    na = str(data.get("next_action") or "")
+    if note not in na:
+        data["next_action"] = f"{na} {note}".strip() if na else note
+
+    return DiagnosisPayload.model_validate(data)
+
+
 async def process_chat(req: ChatRequest) -> ChatResponse:
     settings = get_settings()
     state = session_store.get_or_create(req.session_id, req.language)
@@ -233,11 +308,22 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
                 }
             if "questions_asked_count" not in args:
                 args["questions_asked_count"] = state.questions_asked_count
-            # Hard-quote cost from top strong RAG hit (this turn or session carry-over)
+            # Hard-quote cost only when vehicle identity is known; otherwise keep LLM
+            # range and apply generic disclaimer below.
             cost_hits = rag_hits or list(state.last_strong_rag_hits or [])
-            args = apply_grounded_cost(args, cost_hits, req.language)
+            if _has_vehicle_identity(state.vehicle) or _has_vehicle_identity(
+                args.get("vehicle_context")
+                if isinstance(args.get("vehicle_context"), dict)
+                else None
+            ):
+                args = apply_grounded_cost(args, cost_hits, req.language)
             try:
                 diagnosis_payload = DiagnosisPayload.model_validate(args)
+                diagnosis_payload = _apply_generic_cost_if_no_vehicle(
+                    diagnosis_payload,
+                    vehicle=state.vehicle,
+                    language=req.language,
+                )
                 mode = "diagnosis"
                 if not reply:
                     reply = (
