@@ -38,3 +38,6 @@ class ChatResponse(BaseModel):
     questions_asked_count: int = 0
     intent: str = "car_diagnostics"
     rag_hits: list[dict[str, Any]] = Field(default_factory=list)
+    # Phase 4a.0 integrity (optional; omit/null if attestation failed)
+    content_hash: str | None = None
+    diagnosis_id: str | None = None

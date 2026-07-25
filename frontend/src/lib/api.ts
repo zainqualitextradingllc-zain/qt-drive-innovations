@@ -1,4 +1,9 @@
-import type { ChatApiResponse, Locale, VehicleContext } from "@/types/diagnosis";
+import type {
+  AttestationVerifyResponse,
+  ChatApiResponse,
+  Locale,
+  VehicleContext,
+} from "@/types/diagnosis";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -57,6 +62,20 @@ export async function captureLead(params: {
     throw new Error(text || `HTTP ${res.status}`);
   }
 
+  return res.json();
+}
+
+export async function verifyAttestation(
+  contentHash: string
+): Promise<AttestationVerifyResponse> {
+  const h = encodeURIComponent(contentHash.trim());
+  const res = await fetch(`${API_URL}/api/attestations/verify?h=${h}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `HTTP ${res.status}`);
+  }
   return res.json();
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { captureLead } from "@/lib/api";
 import { captureEvent } from "@/lib/posthog";
@@ -10,9 +10,27 @@ type Props = {
   sessionId: string;
   locale: Locale;
   diagnosisCategory: string;
+  contentHash?: string | null;
 };
 
-export function LeadCapture({ sessionId, locale, diagnosisCategory }: Props) {
+function verifyUrl(locale: Locale, contentHash: string): string {
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}/${locale}/verify?h=${encodeURIComponent(contentHash)}`;
+  }
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_VERCEL_URL ||
+    "https://qt-drive-innovations.vercel.app";
+  const origin = base.startsWith("http") ? base : `https://${base}`;
+  return `${origin.replace(/\/$/, "")}/${locale}/verify?h=${encodeURIComponent(contentHash)}`;
+}
+
+export function LeadCapture({
+  sessionId,
+  locale,
+  diagnosisCategory,
+  contentHash = null,
+}: Props) {
   const t = useTranslations("lead");
   const [method, setMethod] = useState<"email" | "line">("email");
   const [value, setValue] = useState("");
@@ -21,13 +39,19 @@ export function LeadCapture({ sessionId, locale, diagnosisCategory }: Props) {
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const verifyLink = useMemo(
+    () => (contentHash ? verifyUrl(locale, contentHash) : null),
+    [contentHash, locale]
+  );
+
   useEffect(() => {
     captureEvent("cta_shown", {
       session_id: sessionId,
       cta_type: "email",
       diagnosis_category: diagnosisCategory,
+      has_content_hash: Boolean(contentHash),
     });
-  }, [sessionId, diagnosisCategory]);
+  }, [sessionId, diagnosisCategory, contentHash]);
 
   function onCtaClick() {
     captureEvent("cta_clicked", {
@@ -65,7 +89,15 @@ export function LeadCapture({ sessionId, locale, diagnosisCategory }: Props) {
   if (done) {
     return (
       <div className="lead-capture lead-success" role="status">
-        {t("success")}
+        <p className="lead-success-main">{t("success")}</p>
+        {verifyLink ? (
+          <p className="lead-verify-blurb">
+            {t("verifyBlurb")}{" "}
+            <a href={verifyLink} target="_blank" rel="noopener noreferrer">
+              {t("verifyLinkLabel")}
+            </a>
+          </p>
+        ) : null}
       </div>
     );
   }

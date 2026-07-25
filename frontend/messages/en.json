@@ -37,7 +37,8 @@
     "cost": "Estimated repair cost",
     "nextAction": "Recommended next action",
     "confidence": "Confidence",
-    "obd": "Related codes"
+    "obd": "Related codes",
+    "integrityHash": "Integrity hash (SHA-256)"
   },
   "vehicle": {
     "label": "Vehicle",
@@ -63,6 +64,28 @@
     "submit": "Send",
     "submitting": "Sending…",
     "success": "Thanks — we’ll follow up shortly.",
+    "verifyBlurb": "Your diagnosis was secured with a cryptographic hash so it can be checked for tampering.",
+    "verifyLinkLabel": "Verify this diagnosis",
     "error": "Could not submit. Please try again."
+  },
+  "verify": {
+    "title": "Verify diagnosis integrity",
+    "subtitle": "Public SHA-256 check — no login, no personal data on this page.",
+    "loading": "Checking hash…",
+    "notFound": "No attestation found for this hash.",
+    "invalid": "Hash mismatch — stored payload does not re-hash to this value.",
+    "valid": "Integrity match — payload re-hashes to the stored content hash.",
+    "vehicle": "Vehicle",
+    "topCause": "Top diagnosis",
+    "confidence": "Confidence",
+    "timestamp": "Recorded at",
+    "costRange": "Cost range",
+    "hash": "Content hash (SHA-256)",
+    "recomputed": "Recomputed hash",
+    "model": "Model version",
+    "onChain": "On-chain proof: Not yet anchored (coming in a future update)",
+    "backHome": "Back to assistant",
+    "unknownVehicle": "Not specified",
+    "missingHash": "Add ?h=<content_hash> to the URL to verify a diagnosis."
   }
 }

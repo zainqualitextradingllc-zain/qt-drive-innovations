@@ -139,6 +139,8 @@ export function ChatInterface() {
         role: "assistant",
         content: res.reply,
         diagnosis: res.diagnosis || null,
+        contentHash: res.content_hash || null,
+        diagnosisId: res.diagnosis_id || null,
       };
       setMessages((prev) => [...prev, assistantMsg]);
 
@@ -210,6 +212,7 @@ export function ChatInterface() {
               locale={locale}
               diagnosisCategory={diagnosisCategory}
               showLead={showLead}
+              contentHash={m.contentHash}
             />
           );
         })}

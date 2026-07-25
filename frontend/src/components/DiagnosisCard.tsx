@@ -10,12 +10,14 @@ export function DiagnosisCard({
   locale,
   diagnosisCategory,
   showLead = false,
+  contentHash = null,
 }: {
   diagnosis: DiagnosisPayload;
   sessionId: string;
   locale: Locale;
   diagnosisCategory: string;
   showLead?: boolean;
+  contentHash?: string | null;
 }) {
   const t = useTranslations();
   const code = diagnosis.severity_code;
@@ -63,6 +65,15 @@ export function DiagnosisCard({
           </div>
         ) : null}
 
+        {contentHash ? (
+          <div className="meta-block integrity-hash">
+            <label>{t("diagnosis.integrityHash")}</label>
+            <div className="mono-hash" title={contentHash}>
+              {contentHash.slice(0, 12)}…{contentHash.slice(-8)}
+            </div>
+          </div>
+        ) : null}
+
         <p className="disclaimer">{diagnosis.disclaimer || t("footer.disclaimer")}</p>
 
         {showLead && sessionId ? (
@@ -70,6 +81,7 @@ export function DiagnosisCard({
             sessionId={sessionId}
             locale={locale}
             diagnosisCategory={diagnosisCategory}
+            contentHash={contentHash}
           />
         ) : null}
       </div>

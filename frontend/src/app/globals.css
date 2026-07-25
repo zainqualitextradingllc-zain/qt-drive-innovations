@@ -563,6 +563,138 @@ textarea {
   font-weight: 600;
 }
 
+.lead-success-main {
+  margin: 0 0 0.5rem;
+}
+
+.lead-verify-blurb {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--chrome-dim);
+  line-height: 1.45;
+}
+
+.lead-verify-blurb a {
+  color: #93c5fd;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.mono-hash {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+  color: var(--chrome);
+}
+
+.integrity-hash .mono-hash {
+  opacity: 0.9;
+}
+
+/* Phase 4a.0 public verify page */
+.verify-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem 3rem;
+}
+
+.verify-card {
+  width: 100%;
+  max-width: 36rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.5rem 1.35rem;
+}
+
+.verify-card h1 {
+  margin: 0 0 0.4rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--chrome-bright);
+}
+
+.verify-sub {
+  margin: 0 0 1.1rem;
+  font-size: 0.88rem;
+  color: var(--chrome-dim);
+  line-height: 1.45;
+}
+
+.verify-banner {
+  border-radius: var(--radius);
+  padding: 0.75rem 0.9rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.verify-ok {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.verify-fail {
+  background: rgba(220, 38, 38, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+}
+
+.verify-warn {
+  color: #fcd34d;
+  font-size: 0.9rem;
+}
+
+.verify-dl {
+  margin: 0 0 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.verify-dl > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.verify-dl dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--chrome-muted);
+}
+
+.verify-dl dd {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--chrome-bright);
+}
+
+.verify-hash-row dd {
+  font-size: 0.72rem;
+}
+
+.verify-onchain {
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius);
+  background: rgba(55, 65, 81, 0.45);
+  border: 1px dashed var(--border-strong);
+  font-size: 0.85rem;
+  color: var(--chrome-dim);
+  line-height: 1.45;
+}
+
+.verify-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 /* ——— Composer (input + send) ——— */
 .composer {
   border-top: 1px solid var(--border);

@@ -37,7 +37,8 @@
     "cost": "修理費用の目安",
     "nextAction": "推奨される次の行動",
     "confidence": "確信度",
-    "obd": "関連コード"
+    "obd": "関連コード",
+    "integrityHash": "完全性ハッシュ（SHA-256）"
   },
   "vehicle": {
     "label": "車両",
@@ -63,6 +64,28 @@
     "submit": "送信",
     "submitting": "送信中…",
     "success": "ありがとうございます。追ってご連絡します。",
+    "verifyBlurb": "診断結果は改ざん防止のため暗号学的ハッシュで保全されています。",
+    "verifyLinkLabel": "この診断を検証する",
     "error": "送信に失敗しました。もう一度お試しください。"
+  },
+  "verify": {
+    "title": "診断の完全性を検証",
+    "subtitle": "公開SHA-256チェック — ログイン不要、このページに個人情報は含まれません。",
+    "loading": "ハッシュを確認中…",
+    "notFound": "このハッシュに該当する記録が見つかりません。",
+    "invalid": "ハッシュ不一致 — 保存データから再計算した値と一致しません。",
+    "valid": "完全性一致 — 保存データから再計算したハッシュと一致します。",
+    "vehicle": "車両",
+    "topCause": "主な診断",
+    "confidence": "確信度",
+    "timestamp": "記録日時",
+    "costRange": "費用目安",
+    "hash": "コンテンツハッシュ（SHA-256）",
+    "recomputed": "再計算ハッシュ",
+    "model": "モデル版",
+    "onChain": "オンチェーン証明: まだアンカーされていません（今後のアップデートで対応予定）",
+    "backHome": "アシスタントに戻る",
+    "unknownVehicle": "未設定",
+    "missingHash": "検証するには URL に ?h=<content_hash> を付けてください。"
   }
 }

@@ -276,6 +276,29 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
         state.messages = state.messages[-40:]
     session_store.save(state)
 
+    # Phase 4a.0: integrity hash (fail-safe — never break diagnosis / lead flow)
+    content_hash: str | None = None
+    diagnosis_id: str | None = None
+    if mode == "diagnosis" and diagnosis_payload is not None:
+        try:
+            from app.services.attestation import create_diagnosis_attestation
+
+            att = create_diagnosis_attestation(
+                session_id=state.session_id,
+                diagnosis=diagnosis_payload,
+                locale=req.language,
+            )
+            if att:
+                content_hash = att.get("content_hash")
+                diagnosis_id = att.get("diagnosis_id")
+        except Exception:
+            # Extra belt-and-suspenders; create_diagnosis_attestation already catches
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "attestation hook failed session=%s", state.session_id
+            )
+
     return ChatResponse(
         session_id=state.session_id,
         language=req.language,
@@ -286,4 +309,6 @@ async def process_chat(req: ChatRequest) -> ChatResponse:
         questions_asked_count=state.questions_asked_count,
         intent=intent,
         rag_hits=rag_hits,
+        content_hash=content_hash,
+        diagnosis_id=diagnosis_id,
     )

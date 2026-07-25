@@ -41,6 +41,8 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   diagnosis?: DiagnosisPayload | null;
+  contentHash?: string | null;
+  diagnosisId?: string | null;
 }
 
 export interface ChatApiResponse {
@@ -53,4 +55,41 @@ export interface ChatApiResponse {
   questions_asked_count: number;
   intent: string;
   rag_hits?: unknown[];
+  /** Phase 4a.0 SHA-256 of PII-free canonical diagnosis JSON */
+  content_hash?: string | null;
+  diagnosis_id?: string | null;
+}
+
+export interface AttestationVerifyResponse {
+  found: boolean;
+  valid: boolean;
+  content_hash: string;
+  recomputed_hash: string;
+  diagnosis_id?: string;
+  session_id?: string;
+  created_at?: string | null;
+  anchor_status?: string;
+  chain_id?: string | null;
+  tx_hash?: string | null;
+  summary: {
+    locale?: string;
+    timestamp?: string;
+    model_version?: string;
+    vehicle?: {
+      year?: number | null;
+      make?: string | null;
+      model?: string | null;
+      engine?: string | null;
+    };
+    top_cause?: string | null;
+    top_confidence?: number | null;
+    cost_min?: number | null;
+    cost_max?: number | null;
+    causes?: { cause: string; confidence: number }[];
+  };
+  on_chain?: {
+    anchored: boolean;
+    message_en: string;
+    message_ja: string;
+  };
 }

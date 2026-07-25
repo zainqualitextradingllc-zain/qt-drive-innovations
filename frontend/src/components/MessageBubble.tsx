@@ -10,12 +10,14 @@ export function MessageBubble({
   locale,
   diagnosisCategory,
   showLead = false,
+  contentHash = null,
 }: {
   message: ChatMessage;
   sessionId: string;
   locale: Locale;
   diagnosisCategory: string;
   showLead?: boolean;
+  contentHash?: string | null;
 }) {
   const t = useTranslations("chat");
   const isUser = message.role === "user";
@@ -31,6 +33,7 @@ export function MessageBubble({
           locale={locale}
           diagnosisCategory={diagnosisCategory}
           showLead={showLead}
+          contentHash={contentHash ?? message.contentHash}
         />
       ) : null}
     </div>
