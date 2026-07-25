@@ -1,0 +1,159 @@
+"""Lead capture — PII in Supabase only; funnel signal to PostHog (no contact value)."""
+
+from __future__ import annotations
+
+import logging
+import re
+
+import httpx
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from pydantic import BaseModel, field_validator
+
+from app.config import get_settings
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/leads", tags=["leads"])
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class LeadPayload(BaseModel):
+    session_id: str
+    contact_method: str
+    diagnosis_category: str
+    locale: str
+    contact_value: str
+
+    @field_validator("session_id", "contact_value", "diagnosis_category", "locale")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v or not str(v).strip():
+            raise ValueError("must not be empty")
+        return str(v).strip()
+
+    @field_validator("contact_method")
+    @classmethod
+    def valid_method(cls, v: str) -> str:
+        if v not in ("email", "line"):
+            raise ValueError("contact_method must be 'email' or 'line'")
+        return v
+
+    @field_validator("locale")
+    @classmethod
+    def valid_locale(cls, v: str) -> str:
+        if v not in ("en", "ja"):
+            raise ValueError("locale must be 'en' or 'ja'")
+        return v
+
+
+async def fire_lead_captured(
+    session_id: str,
+    contact_method: str,
+    diagnosis_category: str,
+    locale: str,
+) -> None:
+    """Fire-and-forget — never blocks the lead-save response."""
+    settings = get_settings()
+    key = (settings.posthog_key or "").strip()
+    if not key or settings._is_placeholder(key):
+        logger.debug("PostHog key not configured; skip lead_captured")
+        return
+
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            await client.post(
+                "https://us.i.posthog.com/capture/",
+                json={
+                    "api_key": key,
+                    "event": "lead_captured",
+                    "distinct_id": session_id,
+                    "properties": {
+                        "session_id": session_id,
+                        "contact_method": contact_method,
+                        "diagnosis_category": diagnosis_category,
+                        "locale": locale,
+                    },
+                },
+            )
+    except Exception:
+        logger.warning("PostHog capture failed for session %s", session_id, exc_info=True)
+
+
+def _save_lead_row(payload: LeadPayload) -> bool:
+    """Persist contact PII. Prefer DATABASE_URL (psycopg); fall back to Supabase client."""
+    settings = get_settings()
+    row = {
+        "session_id": payload.session_id,
+        "contact_method": payload.contact_method,
+        "contact_value": payload.contact_value,
+        "diagnosis_category": payload.diagnosis_category,
+        "locale": payload.locale,
+    }
+
+    # 1) Direct Postgres (most reliable when pooler/service role JWT is messy)
+    if settings.database_configured:
+        try:
+            import psycopg
+
+            with psycopg.connect(settings.database_url, connect_timeout=15) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        insert into public.diagnostic_leads (
+                          session_id, contact_method, contact_value,
+                          diagnosis_category, locale
+                        ) values (%(session_id)s, %(contact_method)s, %(contact_value)s,
+                                  %(diagnosis_category)s, %(locale)s)
+                        """,
+                        row,
+                    )
+                conn.commit()
+            return True
+        except Exception:
+            logger.exception(
+                "Failed to save lead via DATABASE_URL for session %s",
+                payload.session_id,
+            )
+
+    # 2) Supabase REST client
+    if settings.supabase_configured:
+        try:
+            from supabase import create_client
+
+            client = create_client(
+                settings.supabase_url, settings.supabase_service_role_key
+            )
+            client.table("diagnostic_leads").insert(row).execute()
+            return True
+        except Exception:
+            logger.exception(
+                "Failed to save lead via Supabase client for session %s",
+                payload.session_id,
+            )
+            return False
+
+    logger.warning(
+        "No database configured for leads; funnel signal only (session %s)",
+        payload.session_id,
+    )
+    return False
+
+
+@router.post("/capture")
+async def capture_lead(payload: LeadPayload, background_tasks: BackgroundTasks):
+    if payload.contact_method == "email" and not _EMAIL_RE.match(payload.contact_value):
+        raise HTTPException(status_code=422, detail="invalid email format")
+
+    # 1. PII source of truth (Postgres / Supabase when configured)
+    _save_lead_row(payload)
+
+    # 2. Funnel signal only (no contact_value)
+    background_tasks.add_task(
+        fire_lead_captured,
+        payload.session_id,
+        payload.contact_method,
+        payload.diagnosis_category,
+        payload.locale,
+    )
+
+    return {"status": "captured"}

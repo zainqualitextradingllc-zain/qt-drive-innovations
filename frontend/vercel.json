@@ -10,5 +10,16 @@
       "destination": "/en",
       "permanent": false
     }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'self' https://qualitex-trading.com https://www.qualitex-trading.com https://*.qualitex-trading.com;"
+        }
+      ]
+    }
   ]
 }

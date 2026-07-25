@@ -1,9 +1,22 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { DiagnosisPayload } from "@/types/diagnosis";
+import type { DiagnosisPayload, Locale } from "@/types/diagnosis";
+import { LeadCapture } from "./LeadCapture";
 
-export function DiagnosisCard({ diagnosis }: { diagnosis: DiagnosisPayload }) {
+export function DiagnosisCard({
+  diagnosis,
+  sessionId,
+  locale,
+  diagnosisCategory,
+  showLead = false,
+}: {
+  diagnosis: DiagnosisPayload;
+  sessionId: string;
+  locale: Locale;
+  diagnosisCategory: string;
+  showLead?: boolean;
+}) {
   const t = useTranslations();
   const code = diagnosis.severity_code;
 
@@ -51,6 +64,14 @@ export function DiagnosisCard({ diagnosis }: { diagnosis: DiagnosisPayload }) {
         ) : null}
 
         <p className="disclaimer">{diagnosis.disclaimer || t("footer.disclaimer")}</p>
+
+        {showLead && sessionId ? (
+          <LeadCapture
+            sessionId={sessionId}
+            locale={locale}
+            diagnosisCategory={diagnosisCategory}
+          />
+        ) : null}
       </div>
     </article>
   );

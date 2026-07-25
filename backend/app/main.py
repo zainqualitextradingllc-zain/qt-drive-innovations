@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.config import get_settings
-from app.routers import chat_router, health_router
+from app.routers import chat_router, health_router, leads_router
 
 # Ensure server-side RAG retrieval logs are visible (session + similarity).
 logging.basicConfig(
@@ -51,8 +51,7 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(chat_router)
-# leads_router intentionally omitted until app/routers/leads.py is finished
-# and committed with a matching export in app/routers/__init__.py
+app.include_router(leads_router)
 
 
 @app.get("/")

@@ -1,0 +1,119 @@
+<!--
+  QT Drive Innovations — WordPress Custom HTML embed
+  Page: https://www.qualitex-trading.com/diagnostic-assistant
+
+  HOW TO INSTALL (avoids Gutenberg "block error"):
+  1. Edit the page in WordPress.
+  2. If the existing Custom HTML block shows a broken/invalid icon:
+     - Click the block → three dots (⋮) → Delete, OR
+     - Top-right ⋮ → Code editor, replace the whole block content, then Exit code editor.
+  3. Add a fresh "Custom HTML" block (do not use the Visual / Paragraph block).
+  4. Paste EVERYTHING below this comment (from <style> through </div>).
+  5. Update / Publish. Preview on the live site (editor iframe preview can be flaky).
+
+  Do NOT paste Gutenberg block comments (<!-- wp:html -->) into the Custom HTML field.
+  Do NOT edit only the src inside a half-broken block — replace the whole snippet.
+
+  iframe src = production alias, English locale (tracks latest Vercel deploy):
+  https://qt-drive-innovations.vercel.app/en
+
+  Framing policy (production only — do not change the frozen 4cgp7jwx7 backup):
+  CSP frame-ancestors allows qualitex-trading.com / www (see frontend/next.config.ts,
+  middleware.ts, vercel.json). Chrome shows "接続が拒否されました" / "refused to
+  connect" when an ancestor is NOT on that list (including some WP editor sandboxes).
+  Always verify on the public page: https://www.qualitex-trading.com/diagnostic-assistant
+-->
+<style>
+#qt-drive-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  background: #ffffff !important;
+  z-index: 2147483647 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#qt-drive-loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: -apple-system, sans-serif;
+  font-size: 16px;
+  color: #666;
+  z-index: 1;
+}
+
+#qt-drive-iframe {
+  position: relative;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+  z-index: 2;
+  background: #ffffff;
+  display: block !important;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+body.qt-drive-active header,
+body.qt-drive-active footer,
+body.qt-drive-active nav,
+body.qt-drive-active #wpadminbar,
+body.qt-drive-active .elementor-location-header,
+body.qt-drive-active .elementor-location-footer {
+  display: none !important;
+}
+
+body.qt-drive-active {
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+html.qt-drive-active,
+body.qt-drive-active {
+  height: 100% !important;
+  height: 100dvh !important;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var overlay = document.getElementById("qt-drive-overlay");
+
+  // Move overlay to body so position:fixed is not broken by parent transform/overflow.
+  if (overlay && overlay.parentNode !== document.body) {
+    document.body.appendChild(overlay);
+  }
+
+  document.documentElement.classList.add("qt-drive-active");
+  document.body.classList.add("qt-drive-active");
+
+  var iframe = document.getElementById("qt-drive-iframe");
+  var loader = document.getElementById("qt-drive-loader");
+
+  if (iframe && loader) {
+    iframe.addEventListener("load", function () {
+      loader.style.display = "none";
+    });
+  }
+});
+</script>
+
+<div id="qt-drive-overlay">
+  <div id="qt-drive-loader">Loading QT Drive Innovations...</div>
+  <iframe
+    id="qt-drive-iframe"
+    src="https://qt-drive-innovations.vercel.app/en"
+    title="QT Drive Innovations - Diagnostic Assistant"
+    allow="clipboard-write"
+    loading="eager"
+    referrerpolicy="strict-origin-when-cross-origin"
+  ></iframe>
+</div>

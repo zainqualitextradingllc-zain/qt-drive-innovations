@@ -33,4 +33,31 @@ export async function checkHealth(): Promise<{ status: string; use_mock_llm?: bo
   return res.json();
 }
 
+export async function captureLead(params: {
+  sessionId: string;
+  contactMethod: "email" | "line";
+  diagnosisCategory: string;
+  locale: Locale;
+  contactValue: string;
+}): Promise<{ status: string }> {
+  const res = await fetch(`${API_URL}/leads/capture`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      session_id: params.sessionId,
+      contact_method: params.contactMethod,
+      diagnosis_category: params.diagnosisCategory,
+      locale: params.locale,
+      contact_value: params.contactValue,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export { API_URL };

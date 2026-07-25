@@ -19,8 +19,9 @@ const nextConfig: NextConfig = {
     ],
   },
   // Allow WordPress (qualitex-trading.com) to embed this app in an iframe.
-  // Modern browsers use CSP frame-ancestors; X-Frame-Options ALLOW-FROM is obsolete
-  // and is omitted so it cannot conflict with CSP.
+  // Modern browsers enforce CSP frame-ancestors (X-Frame-Options ALLOW-FROM is obsolete).
+  // Do NOT set X-Frame-Options — it can conflict with CSP and block legitimate embeds.
+  // Keep in sync with middleware.ts and vercel.json.
   async headers() {
     return [
       {

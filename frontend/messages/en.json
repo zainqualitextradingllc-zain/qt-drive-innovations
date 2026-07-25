@@ -51,5 +51,18 @@
   "errors": {
     "network": "Could not reach the diagnostic service. Is the backend running on port 8000?",
     "generic": "Something went wrong. Please try again."
+  },
+  "lead": {
+    "prompt": "Want a parts quote or repair guidance from Qualitex Trading?",
+    "cta": "Request a quote",
+    "methodLabel": "Contact method",
+    "email": "Email",
+    "line": "LINE",
+    "emailPlaceholder": "you@example.com",
+    "linePlaceholder": "LINE ID or phone",
+    "submit": "Send",
+    "submitting": "Sending…",
+    "success": "Thanks — we’ll follow up shortly.",
+    "error": "Could not submit. Please try again."
   }
 }
