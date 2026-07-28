@@ -89,7 +89,20 @@ export interface AttestationVerifyResponse {
   };
   on_chain?: {
     anchored: boolean;
+    status?: "confirmed" | "pending" | string;
     message_en: string;
     message_ja: string;
+    tx_hash?: string | null;
+    explorer_url?: string | null;
+    merkle_root?: string | null;
+    proof?: string[] | null;
+    leaf_hash?: string | null;
+    leaf_index?: number | null;
+    batch_id?: string | null;
+    chain_name?: string | null;
+    chain_id?: number | string | null;
+    block_number?: number | null;
+    contract_address?: string | null;
+    anchored_at?: string | null;
   };
 }

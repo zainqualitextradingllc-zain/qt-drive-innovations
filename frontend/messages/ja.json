@@ -84,8 +84,19 @@
     "recomputed": "再計算ハッシュ",
     "model": "モデル版",
     "onChain": "オンチェーン証明: まだアンカーされていません（今後のアップデートで対応予定）",
+    "onChainConfirmed": "オンチェーン確認済み",
+    "onChainPending": "オンチェーン・アンカー待ち",
+    "viewOnExplorer": "アンカー取引を表示",
+    "techDetails": "技術詳細を表示",
+    "techHide": "技術詳細を隠す",
+    "merkleRoot": "Merkle ルート",
+    "merkleProof": "Merkle 証明",
+    "leafHash": "リーフハッシュ",
+    "chainName": "チェーン",
+    "blockNumber": "ブロック",
     "backHome": "アシスタントに戻る",
     "unknownVehicle": "未設定",
     "missingHash": "検証するには URL に ?h=<content_hash> を付けてください。"
   }
 }
+

@@ -90,10 +90,11 @@ export default async function VerifyPage({ params, searchParams }: Props) {
   const summary = data?.summary;
   const analyticsResult =
     error || !data ? "not_found" : valid ? "match" : "mismatch";
-  const onChainMsg =
-    locale === "ja"
-      ? data?.on_chain?.message_ja || t("onChain")
-      : data?.on_chain?.message_en || t("onChain");
+  const onChain = data?.on_chain;
+  const onChainConfirmed = Boolean(onChain?.anchored && onChain?.tx_hash);
+  const onChainMsg = onChainConfirmed
+    ? t("onChainConfirmed")
+    : t("onChainPending");
 
   return (
     <main className="verify-page">
@@ -158,7 +159,73 @@ export default async function VerifyPage({ params, searchParams }: Props) {
               </div>
             </dl>
 
-            <p className="verify-onchain">{onChainMsg}</p>
+            {/* QT ProofChain™ — additive on-chain badge (does not alter hash check) */}
+            <div
+              className={`verify-onchain-badge ${
+                onChainConfirmed ? "verify-onchain-ok" : "verify-onchain-pending"
+              }`}
+              role="status"
+            >
+              <span className="verify-onchain-label">
+                {onChainConfirmed ? "⛓️ " : "⏳ "}
+                {onChainMsg}
+              </span>
+              {onChainConfirmed && onChain?.explorer_url ? (
+                <a
+                  className="verify-explorer-link"
+                  href={onChain.explorer_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t("viewOnExplorer")}
+                </a>
+              ) : null}
+              {onChainConfirmed ? (
+                <details className="verify-tech-details">
+                  <summary>{t("techDetails")}</summary>
+                  <dl className="verify-dl verify-tech-dl">
+                    {onChain?.chain_name ? (
+                      <div>
+                        <dt>{t("chainName")}</dt>
+                        <dd>{onChain.chain_name}</dd>
+                      </div>
+                    ) : null}
+                    {onChain?.block_number != null ? (
+                      <div>
+                        <dt>{t("blockNumber")}</dt>
+                        <dd>{String(onChain.block_number)}</dd>
+                      </div>
+                    ) : null}
+                    {onChain?.tx_hash ? (
+                      <div className="verify-hash-row">
+                        <dt>Tx</dt>
+                        <dd className="mono-hash">{onChain.tx_hash}</dd>
+                      </div>
+                    ) : null}
+                    {onChain?.merkle_root ? (
+                      <div className="verify-hash-row">
+                        <dt>{t("merkleRoot")}</dt>
+                        <dd className="mono-hash">{onChain.merkle_root}</dd>
+                      </div>
+                    ) : null}
+                    {onChain?.leaf_hash ? (
+                      <div className="verify-hash-row">
+                        <dt>{t("leafHash")}</dt>
+                        <dd className="mono-hash">{onChain.leaf_hash}</dd>
+                      </div>
+                    ) : null}
+                    {onChain?.proof && onChain.proof.length > 0 ? (
+                      <div className="verify-hash-row">
+                        <dt>{t("merkleProof")}</dt>
+                        <dd className="mono-hash">
+                          {onChain.proof.join("\n")}
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </details>
+              ) : null}
+            </div>
           </>
         )}
 

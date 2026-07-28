@@ -84,8 +84,19 @@
     "recomputed": "Recomputed hash",
     "model": "Model version",
     "onChain": "On-chain proof: Not yet anchored (coming in a future update)",
+    "onChainConfirmed": "On-Chain Confirmed",
+    "onChainPending": "Pending on-chain anchoring",
+    "viewOnExplorer": "View anchoring transaction",
+    "techDetails": "Show technical details",
+    "techHide": "Hide technical details",
+    "merkleRoot": "Merkle root",
+    "merkleProof": "Merkle proof",
+    "leafHash": "Leaf hash",
+    "chainName": "Chain",
+    "blockNumber": "Block",
     "backHome": "Back to assistant",
     "unknownVehicle": "Not specified",
     "missingHash": "Add ?h=<content_hash> to the URL to verify a diagnosis."
   }
 }
+

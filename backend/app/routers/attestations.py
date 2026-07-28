@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.services.attestation import (
     fetch_attestation_by_hash,
+    fetch_merkle_onchain,
     serialize_canonical,
     sha256_hex,
     verify_content_hash,
@@ -40,6 +41,49 @@ async def verify_attestation(
     top = causes[0] if causes else None
     vehicle = canonical.get("vehicle") or {}
 
+    # Phase 4a.1 QT ProofChain™ — additive only; does not affect hash validity
+    merkle = fetch_merkle_onchain(stored_hash)
+    legacy_tx = row.get("tx_hash")
+    anchored = bool(merkle and merkle.get("tx_hash")) or bool(legacy_tx)
+    if merkle and merkle.get("tx_hash"):
+        on_chain = {
+            "anchored": True,
+            "status": "confirmed",
+            "message_en": "On-Chain Confirmed (Merkle batch anchored)",
+            "message_ja": "オンチェーン確認済み（Merkle バッチでアンカー済み）",
+            "tx_hash": merkle.get("tx_hash"),
+            "explorer_url": merkle.get("explorer_url"),
+            "merkle_root": merkle.get("merkle_root"),
+            "proof": merkle.get("proof"),
+            "leaf_hash": merkle.get("leaf_hash"),
+            "leaf_index": merkle.get("leaf_index"),
+            "batch_id": merkle.get("batch_id"),
+            "chain_name": merkle.get("chain_name"),
+            "chain_id": merkle.get("chain_id"),
+            "block_number": merkle.get("block_number"),
+            "contract_address": merkle.get("contract_address"),
+            "anchored_at": merkle.get("anchored_at"),
+        }
+    elif legacy_tx:
+        on_chain = {
+            "anchored": True,
+            "status": "confirmed",
+            "message_en": "On-Chain Confirmed",
+            "message_ja": "オンチェーン確認済み",
+            "tx_hash": legacy_tx,
+            "explorer_url": None,
+            "chain_id": row.get("chain_id"),
+        }
+    else:
+        on_chain = {
+            "anchored": False,
+            "status": "pending",
+            "message_en": "Pending on-chain anchoring",
+            "message_ja": "オンチェーン・アンカー待ち",
+            "tx_hash": None,
+            "explorer_url": None,
+        }
+
     return {
         "found": True,
         "valid": valid,
@@ -48,9 +92,13 @@ async def verify_attestation(
         "diagnosis_id": row.get("diagnosis_id"),
         "session_id": row.get("session_id"),
         "created_at": row.get("created_at"),
-        "anchor_status": row.get("anchor_status") or "hashed",
-        "chain_id": row.get("chain_id"),
-        "tx_hash": row.get("tx_hash"),
+        "anchor_status": (
+            "anchored"
+            if anchored
+            else (row.get("anchor_status") or "hashed")
+        ),
+        "chain_id": (merkle or {}).get("chain_id") or row.get("chain_id"),
+        "tx_hash": (merkle or {}).get("tx_hash") or legacy_tx,
         "summary": {
             "locale": canonical.get("locale"),
             "timestamp": canonical.get("timestamp"),
@@ -62,9 +110,5 @@ async def verify_attestation(
             "cost_max": canonical.get("cost_max"),
             "causes": causes,
         },
-        "on_chain": {
-            "anchored": bool(row.get("tx_hash")),
-            "message_en": "On-chain proof: Not yet anchored (coming in a future update)",
-            "message_ja": "オンチェーン証明: まだアンカーされていません（今後のアップデートで対応予定）",
-        },
+        "on_chain": on_chain,
     }

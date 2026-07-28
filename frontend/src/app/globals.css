@@ -702,6 +702,51 @@ textarea {
   line-height: 1.45;
 }
 
+/* QT ProofChain™ badges */
+.verify-onchain-badge {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.verify-onchain-ok {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #a7f3d0;
+}
+.verify-onchain-pending {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px dashed rgba(245, 158, 11, 0.45);
+  color: #fcd34d;
+}
+.verify-onchain-label {
+  font-weight: 600;
+}
+.verify-explorer-link {
+  color: #93c5fd;
+  text-decoration: underline;
+  font-size: 0.85rem;
+  width: fit-content;
+}
+.verify-tech-details {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--chrome-dim);
+}
+.verify-tech-details summary {
+  cursor: pointer;
+  user-select: none;
+  color: #cbd5e1;
+}
+.verify-tech-dl {
+  margin-top: 0.5rem;
+}
+
+
 .verify-actions {
   display: flex;
   gap: 0.5rem;

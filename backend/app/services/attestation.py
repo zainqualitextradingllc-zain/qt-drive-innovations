@@ -529,3 +529,154 @@ def fetch_attestation_by_hash(content_hash: str) -> dict[str, Any] | None:
             logger.exception("fetch_attestation supabase failed hash=%s", h[:16])
 
     return None
+
+
+# Explorer templates for ProofChain™ (Phase 4a.1)
+_EXPLORER_TX = {
+    "polygon_amoy": "https://amoy.polygonscan.com/tx/{tx}",
+    "polygon": "https://polygonscan.com/tx/{tx}",
+    "base_sepolia": "https://sepolia.basescan.org/tx/{tx}",
+    "base": "https://basescan.org/tx/{tx}",
+}
+
+
+def fetch_merkle_onchain(content_hash: str) -> dict[str, Any] | None:
+    """
+    QT ProofChain™: load Merkle inclusion + batch tx if this hash was anchored.
+    Read-only. Returns None when not yet in any confirmed/submitted batch.
+    """
+    h = (content_hash or "").strip().lower()
+    if not h or len(h) < 32:
+        return None
+
+    settings = get_settings()
+
+    def _pack(row: dict[str, Any]) -> dict[str, Any]:
+        chain = (row.get("chain_name") or "").lower()
+        tx = row.get("tx_hash")
+        explorer = None
+        if tx and chain in _EXPLORER_TX:
+            explorer = _EXPLORER_TX[chain].format(tx=tx)
+        return {
+            "content_hash": row.get("content_hash"),
+            "leaf_hash": row.get("leaf_hash"),
+            "proof": row.get("proof") or [],
+            "leaf_index": row.get("leaf_index"),
+            "batch_id": str(row.get("batch_id")) if row.get("batch_id") else None,
+            "merkle_root": row.get("merkle_root"),
+            "tx_hash": tx,
+            "block_number": row.get("block_number"),
+            "chain_name": row.get("chain_name"),
+            "chain_id": row.get("chain_id"),
+            "contract_address": row.get("contract_address"),
+            "anchored_at": row.get("anchored_at") or row.get("created_at"),
+            "batch_status": row.get("batch_status") or row.get("status"),
+            "explorer_url": explorer,
+        }
+
+    if settings.database_configured:
+        try:
+            import psycopg
+
+            with psycopg.connect(settings.database_url, connect_timeout=15) as conn:
+                with conn.cursor() as cur:
+                    try:
+                        cur.execute(
+                            """
+                            select content_hash, leaf_hash, proof, leaf_index,
+                                   batch_id, merkle_root, tx_hash, block_number,
+                                   chain_name, chain_id, contract_address,
+                                   anchored_at, batch_status
+                            from public.v_attestation_onchain
+                            where lower(content_hash) = %s
+                            order by anchored_at desc nulls last
+                            limit 1
+                            """,
+                            (h,),
+                        )
+                    except Exception:
+                        cur.execute(
+                            """
+                            select p.content_hash, p.leaf_hash, p.proof, p.leaf_index,
+                                   p.batch_id, b.merkle_root, b.tx_hash, b.block_number,
+                                   b.chain_name, b.chain_id, b.contract_address,
+                                   b.created_at, b.status
+                            from public.attestation_merkle_proofs p
+                            join public.anchor_batches b on b.batch_id = p.batch_id
+                            where lower(p.content_hash) = %s
+                              and b.status in ('submitted', 'confirmed')
+                            order by b.created_at desc
+                            limit 1
+                            """,
+                            (h,),
+                        )
+                    row = cur.fetchone()
+                    if not row:
+                        return None
+                    keys = [
+                        "content_hash",
+                        "leaf_hash",
+                        "proof",
+                        "leaf_index",
+                        "batch_id",
+                        "merkle_root",
+                        "tx_hash",
+                        "block_number",
+                        "chain_name",
+                        "chain_id",
+                        "contract_address",
+                        "anchored_at",
+                        "batch_status",
+                    ]
+                    data = dict(zip(keys, row))
+                    if hasattr(data.get("anchored_at"), "isoformat"):
+                        data["anchored_at"] = data["anchored_at"].isoformat()
+                    if isinstance(data.get("proof"), str):
+                        data["proof"] = json.loads(data["proof"])
+                    return _pack(data)
+        except Exception:
+            logger.exception("fetch_merkle_onchain postgres failed hash=%s", h[:16])
+
+    if settings.supabase_configured:
+        try:
+            from supabase import create_client
+
+            client = create_client(
+                settings.supabase_url, settings.supabase_service_role_key
+            )
+            res = (
+                client.table("attestation_merkle_proofs")
+                .select(
+                    "content_hash,leaf_hash,proof,leaf_index,batch_id,"
+                    "anchor_batches(merkle_root,tx_hash,block_number,chain_name,"
+                    "chain_id,contract_address,created_at,status)"
+                )
+                .eq("content_hash", h)
+                .limit(5)
+                .execute()
+            )
+            for r in res.data or []:
+                b = r.get("anchor_batches") or {}
+                if b.get("status") not in ("submitted", "confirmed"):
+                    continue
+                return _pack(
+                    {
+                        "content_hash": r.get("content_hash"),
+                        "leaf_hash": r.get("leaf_hash"),
+                        "proof": r.get("proof"),
+                        "leaf_index": r.get("leaf_index"),
+                        "batch_id": r.get("batch_id"),
+                        "merkle_root": b.get("merkle_root"),
+                        "tx_hash": b.get("tx_hash"),
+                        "block_number": b.get("block_number"),
+                        "chain_name": b.get("chain_name"),
+                        "chain_id": b.get("chain_id"),
+                        "contract_address": b.get("contract_address"),
+                        "anchored_at": b.get("created_at"),
+                        "batch_status": b.get("status"),
+                    }
+                )
+        except Exception:
+            logger.exception("fetch_merkle_onchain supabase failed hash=%s", h[:16])
+
+    return None
