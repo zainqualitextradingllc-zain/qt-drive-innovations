@@ -38,7 +38,9 @@
     "nextAction": "推奨される次の行動",
     "confidence": "確信度",
     "obd": "関連コード",
-    "integrityHash": "完全性ハッシュ（SHA-256）"
+    "integrityHash": "完全性ハッシュ（SHA-256）",
+    "verifyThisDiagnosis": "この診断を検証",
+    "verifyHint": "公開の完全性チェックを開きます（個人情報は含みません）。"
   },
   "vehicle": {
     "label": "車両",
@@ -55,6 +57,7 @@
   },
   "lead": {
     "prompt": "Qualitex Trading から部品見積や修理の案内が必要ですか？",
+    "promptUrgent": "緊急度の高い症状です — Qualitex Trading に部品見積・修理案内を今すぐ依頼できます。",
     "cta": "見積を依頼",
     "methodLabel": "連絡方法",
     "email": "メール",
@@ -74,7 +77,10 @@
     "loading": "ハッシュを確認中…",
     "notFound": "このハッシュに該当する記録が見つかりません。",
     "invalid": "ハッシュ不一致 — 保存データから再計算した値と一致しません。",
-    "valid": "完全性一致 — 保存データから再計算したハッシュと一致します。",
+    "valid": "完全性を記録済み — SHA-256ハッシュを確認しました（再計算値が保存ハッシュと一致）。",
+    "integrityLabel": "完全性（即時）",
+    "integrityOk": "完全性を記録済み — SHA-256ハッシュ確認済み",
+    "integrityFail": "完全性チェック失敗 — ハッシュ不一致",
     "vehicle": "車両",
     "topCause": "主な診断",
     "confidence": "確信度",
@@ -84,8 +90,10 @@
     "recomputed": "再計算ハッシュ",
     "model": "モデル版",
     "onChain": "オンチェーン証明: まだアンカーされていません（今後のアップデートで対応予定）",
-    "onChainConfirmed": "オンチェーン確認済み",
-    "onChainPending": "オンチェーン・アンカー待ち",
+    "onChainLabel": "オンチェーン（バッチ）",
+    "onChainConfirmed": "オンチェーン確認済み — Merkleルートがチェーンにアンカー済み",
+    "onChainPending": "オンチェーン保留（日次バッチ）— 次回のProofChainアンカー実行まで通常の状態です。エラーではありません。",
+    "onChainPendingHint": "上記の完全性チェックはすでに完了しています。ブロックチェーンへのアンカーは日次バッチで行われ、SHA-256検証には影響しません。",
     "viewOnExplorer": "アンカー取引を表示",
     "techDetails": "技術詳細を表示",
     "techHide": "技術詳細を隠す",

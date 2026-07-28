@@ -38,7 +38,9 @@
     "nextAction": "Recommended next action",
     "confidence": "Confidence",
     "obd": "Related codes",
-    "integrityHash": "Integrity hash (SHA-256)"
+    "integrityHash": "Integrity hash (SHA-256)",
+    "verifyThisDiagnosis": "Verify this diagnosis",
+    "verifyHint": "Opens a public integrity check (no personal data)."
   },
   "vehicle": {
     "label": "Vehicle",
@@ -55,6 +57,7 @@
   },
   "lead": {
     "prompt": "Want a parts quote or repair guidance from Qualitex Trading?",
+    "promptUrgent": "This looks urgent — get a parts quote or repair guidance from Qualitex Trading now.",
     "cta": "Request a quote",
     "methodLabel": "Contact method",
     "email": "Email",
@@ -74,7 +77,10 @@
     "loading": "Checking hash…",
     "notFound": "No attestation found for this hash.",
     "invalid": "Hash mismatch — stored payload does not re-hash to this value.",
-    "valid": "Integrity match — payload re-hashes to the stored content hash.",
+    "valid": "Integrity recorded — SHA-256 hash confirmed (payload re-hashes to the stored content hash).",
+    "integrityLabel": "Integrity (immediate)",
+    "integrityOk": "Integrity recorded — SHA-256 hash confirmed",
+    "integrityFail": "Integrity check failed — hash mismatch",
     "vehicle": "Vehicle",
     "topCause": "Top diagnosis",
     "confidence": "Confidence",
@@ -84,8 +90,10 @@
     "recomputed": "Recomputed hash",
     "model": "Model version",
     "onChain": "On-chain proof: Not yet anchored (coming in a future update)",
-    "onChainConfirmed": "On-Chain Confirmed",
-    "onChainPending": "Pending on-chain anchoring",
+    "onChainLabel": "On-chain (batch)",
+    "onChainConfirmed": "On-chain confirmed — Merkle root anchored on chain",
+    "onChainPending": "On-chain pending (daily batch) — expected until the next ProofChain anchor run. Not an error.",
+    "onChainPendingHint": "Integrity is already verified above. Blockchain anchoring runs on a daily batch schedule and does not affect the SHA-256 check.",
     "viewOnExplorer": "View anchoring transaction",
     "techDetails": "Show technical details",
     "techHide": "Hide technical details",

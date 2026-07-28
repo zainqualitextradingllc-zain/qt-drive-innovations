@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import type { DiagnosisPayload, Locale } from "@/types/diagnosis";
+import { verifyUrl } from "@/lib/verifyUrl";
 import { LeadCapture } from "./LeadCapture";
 
 export function DiagnosisCard({
@@ -21,6 +23,11 @@ export function DiagnosisCard({
 }) {
   const t = useTranslations();
   const code = diagnosis.severity_code;
+  const hash = (contentHash || "").trim();
+  const verifyHref = useMemo(
+    () => (hash ? verifyUrl(locale, hash) : null),
+    [hash, locale]
+  );
 
   return (
     <article className={`diagnosis-card severity-${code}`}>
@@ -85,12 +92,22 @@ export function DiagnosisCard({
           </div>
         ) : null}
 
-        {contentHash ? (
-          <div className="meta-block integrity-hash">
+        {/* Fail-soft: only when content_hash is present — never gated on lead form */}
+        {verifyHref ? (
+          <div className="meta-block integrity-hash diagnosis-verify-block">
             <label>{t("diagnosis.integrityHash")}</label>
-            <div className="mono-hash" title={contentHash}>
-              {contentHash.slice(0, 12)}…{contentHash.slice(-8)}
+            <div className="mono-hash" title={hash}>
+              {hash.slice(0, 12)}…{hash.slice(-8)}
             </div>
+            <a
+              className="btn btn-ghost diagnosis-verify-link"
+              href={verifyHref}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("diagnosis.verifyThisDiagnosis")}
+            </a>
+            <p className="diagnosis-verify-hint">{t("diagnosis.verifyHint")}</p>
           </div>
         ) : null}
 
@@ -102,6 +119,7 @@ export function DiagnosisCard({
             locale={locale}
             diagnosisCategory={diagnosisCategory}
             contentHash={contentHash}
+            severityCode={code}
           />
         ) : null}
       </div>

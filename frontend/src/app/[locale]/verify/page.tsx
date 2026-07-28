@@ -92,9 +92,6 @@ export default async function VerifyPage({ params, searchParams }: Props) {
     error || !data ? "not_found" : valid ? "match" : "mismatch";
   const onChain = data?.on_chain;
   const onChainConfirmed = Boolean(onChain?.anchored && onChain?.tx_hash);
-  const onChainMsg = onChainConfirmed
-    ? t("onChainConfirmed")
-    : t("onChainPending");
 
   return (
     <main className="verify-page">
@@ -109,12 +106,19 @@ export default async function VerifyPage({ params, searchParams }: Props) {
           </div>
         ) : (
           <>
-            <div
-              className={`verify-banner ${valid ? "verify-ok" : "verify-fail"}`}
-              role="status"
-            >
-              {valid ? t("valid") : t("invalid")}
-            </div>
+            {/* Layer 1: immediate integrity (SHA-256) — independent of chain */}
+            <section className="verify-status-layer" aria-label={t("integrityLabel")}>
+              <h2 className="verify-layer-title">{t("integrityLabel")}</h2>
+              <div
+                className={`verify-banner ${valid ? "verify-ok" : "verify-fail"}`}
+                role="status"
+              >
+                {valid ? t("integrityOk") : t("integrityFail")}
+              </div>
+              <p className="verify-layer-detail">
+                {valid ? t("valid") : t("invalid")}
+              </p>
+            </section>
 
             <dl className="verify-dl">
               <div>
@@ -159,73 +163,82 @@ export default async function VerifyPage({ params, searchParams }: Props) {
               </div>
             </dl>
 
-            {/* QT ProofChain™ — additive on-chain badge (does not alter hash check) */}
-            <div
-              className={`verify-onchain-badge ${
-                onChainConfirmed ? "verify-onchain-ok" : "verify-onchain-pending"
-              }`}
-              role="status"
+            {/* Layer 2: on-chain (daily batch) — pending is expected, not an error */}
+            <section
+              className="verify-status-layer verify-onchain-layer"
+              aria-label={t("onChainLabel")}
             >
-              <span className="verify-onchain-label">
-                {onChainConfirmed ? "⛓️ " : "⏳ "}
-                {onChainMsg}
-              </span>
-              {onChainConfirmed && onChain?.explorer_url ? (
-                <a
-                  className="verify-explorer-link"
-                  href={onChain.explorer_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {t("viewOnExplorer")}
-                </a>
-              ) : null}
-              {onChainConfirmed ? (
-                <details className="verify-tech-details">
-                  <summary>{t("techDetails")}</summary>
-                  <dl className="verify-dl verify-tech-dl">
-                    {onChain?.chain_name ? (
-                      <div>
-                        <dt>{t("chainName")}</dt>
-                        <dd>{onChain.chain_name}</dd>
-                      </div>
-                    ) : null}
-                    {onChain?.block_number != null ? (
-                      <div>
-                        <dt>{t("blockNumber")}</dt>
-                        <dd>{String(onChain.block_number)}</dd>
-                      </div>
-                    ) : null}
-                    {onChain?.tx_hash ? (
-                      <div className="verify-hash-row">
-                        <dt>Tx</dt>
-                        <dd className="mono-hash">{onChain.tx_hash}</dd>
-                      </div>
-                    ) : null}
-                    {onChain?.merkle_root ? (
-                      <div className="verify-hash-row">
-                        <dt>{t("merkleRoot")}</dt>
-                        <dd className="mono-hash">{onChain.merkle_root}</dd>
-                      </div>
-                    ) : null}
-                    {onChain?.leaf_hash ? (
-                      <div className="verify-hash-row">
-                        <dt>{t("leafHash")}</dt>
-                        <dd className="mono-hash">{onChain.leaf_hash}</dd>
-                      </div>
-                    ) : null}
-                    {onChain?.proof && onChain.proof.length > 0 ? (
-                      <div className="verify-hash-row">
-                        <dt>{t("merkleProof")}</dt>
-                        <dd className="mono-hash">
-                          {onChain.proof.join("\n")}
-                        </dd>
-                      </div>
-                    ) : null}
-                  </dl>
-                </details>
-              ) : null}
-            </div>
+              <h2 className="verify-layer-title">{t("onChainLabel")}</h2>
+              <div
+                className={`verify-onchain-badge ${
+                  onChainConfirmed ? "verify-onchain-ok" : "verify-onchain-pending"
+                }`}
+                role="status"
+              >
+                <span className="verify-onchain-label">
+                  {onChainConfirmed ? "⛓️ " : "⏳ "}
+                  {onChainConfirmed ? t("onChainConfirmed") : t("onChainPending")}
+                </span>
+                {onChainConfirmed && onChain?.explorer_url ? (
+                  <a
+                    className="verify-explorer-link"
+                    href={onChain.explorer_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {t("viewOnExplorer")}
+                  </a>
+                ) : null}
+                {!onChainConfirmed ? (
+                  <p className="verify-onchain-hint">{t("onChainPendingHint")}</p>
+                ) : null}
+                {onChainConfirmed ? (
+                  <details className="verify-tech-details">
+                    <summary>{t("techDetails")}</summary>
+                    <dl className="verify-dl verify-tech-dl">
+                      {onChain?.chain_name ? (
+                        <div>
+                          <dt>{t("chainName")}</dt>
+                          <dd>{onChain.chain_name}</dd>
+                        </div>
+                      ) : null}
+                      {onChain?.block_number != null ? (
+                        <div>
+                          <dt>{t("blockNumber")}</dt>
+                          <dd>{String(onChain.block_number)}</dd>
+                        </div>
+                      ) : null}
+                      {onChain?.tx_hash ? (
+                        <div className="verify-hash-row">
+                          <dt>Tx</dt>
+                          <dd className="mono-hash">{onChain.tx_hash}</dd>
+                        </div>
+                      ) : null}
+                      {onChain?.merkle_root ? (
+                        <div className="verify-hash-row">
+                          <dt>{t("merkleRoot")}</dt>
+                          <dd className="mono-hash">{onChain.merkle_root}</dd>
+                        </div>
+                      ) : null}
+                      {onChain?.leaf_hash ? (
+                        <div className="verify-hash-row">
+                          <dt>{t("leafHash")}</dt>
+                          <dd className="mono-hash">{onChain.leaf_hash}</dd>
+                        </div>
+                      ) : null}
+                      {onChain?.proof && onChain.proof.length > 0 ? (
+                        <div className="verify-hash-row">
+                          <dt>{t("merkleProof")}</dt>
+                          <dd className="mono-hash">
+                            {onChain.proof.join("\n")}
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                  </details>
+                ) : null}
+              </div>
+            </section>
           </>
         )}
 

@@ -592,6 +592,49 @@ textarea {
   opacity: 0.9;
 }
 
+.diagnosis-verify-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.diagnosis-verify-link {
+  align-self: flex-start;
+  min-height: var(--touch);
+  padding: 0.45rem 0.95rem;
+  border-color: rgba(147, 197, 253, 0.45);
+  color: #93c5fd;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.diagnosis-verify-link:hover {
+  border-color: rgba(147, 197, 253, 0.75);
+  background: rgba(59, 130, 246, 0.12);
+  color: #bfdbfe;
+}
+
+.diagnosis-verify-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--chrome-dim);
+  line-height: 1.4;
+}
+
+.lead-urgent {
+  border-color: rgba(220, 38, 38, 0.45);
+  background: rgba(220, 38, 38, 0.08);
+  border-radius: var(--radius);
+  padding: 0.85rem 0.9rem;
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.12);
+}
+
+.lead-urgent .lead-prompt {
+  color: #fecaca;
+  font-weight: 600;
+}
+
 .cost-generic-banner {
   margin: 0.15rem 0 0.35rem;
   padding: 0.65rem 0.85rem;
@@ -635,6 +678,39 @@ textarea {
   font-size: 0.88rem;
   color: var(--chrome-dim);
   line-height: 1.45;
+}
+
+.verify-status-layer {
+  margin: 0 0 1.15rem;
+}
+
+.verify-layer-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--chrome-muted);
+}
+
+.verify-layer-detail {
+  margin: -0.45rem 0 0.85rem;
+  font-size: 0.82rem;
+  color: var(--chrome-dim);
+  line-height: 1.45;
+}
+
+.verify-onchain-layer {
+  margin-top: 0.25rem;
+}
+
+.verify-onchain-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: inherit;
+  opacity: 0.9;
 }
 
 .verify-banner {

@@ -4,37 +4,31 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { captureLead } from "@/lib/api";
 import { captureEvent } from "@/lib/posthog";
-import type { Locale } from "@/types/diagnosis";
+import { verifyUrl } from "@/lib/verifyUrl";
+import type { Locale, SeverityCode } from "@/types/diagnosis";
 
 type Props = {
   sessionId: string;
   locale: Locale;
   diagnosisCategory: string;
   contentHash?: string | null;
+  /** When stop_immediately, auto-open the quote form (high-intent). */
+  severityCode?: SeverityCode | string | null;
 };
-
-function verifyUrl(locale: Locale, contentHash: string): string {
-  if (typeof window !== "undefined" && window.location?.origin) {
-    return `${window.location.origin}/${locale}/verify?h=${encodeURIComponent(contentHash)}`;
-  }
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXT_PUBLIC_VERCEL_URL ||
-    "https://qt-drive-innovations.vercel.app";
-  const origin = base.startsWith("http") ? base : `https://${base}`;
-  return `${origin.replace(/\/$/, "")}/${locale}/verify?h=${encodeURIComponent(contentHash)}`;
-}
 
 export function LeadCapture({
   sessionId,
   locale,
   diagnosisCategory,
   contentHash = null,
+  severityCode = null,
 }: Props) {
   const t = useTranslations("lead");
+  const isUrgent = severityCode === "stop_immediately";
   const [method, setMethod] = useState<"email" | "line">("email");
   const [value, setValue] = useState("");
-  const [open, setOpen] = useState(false);
+  // High-severity: form open by default (no extra click to expand)
+  const [open, setOpen] = useState(isUrgent);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,14 +44,19 @@ export function LeadCapture({
       cta_type: "email",
       diagnosis_category: diagnosisCategory,
       has_content_hash: Boolean(contentHash),
+      severity_code: severityCode || "",
+      auto_opened: isUrgent,
     });
-  }, [sessionId, diagnosisCategory, contentHash]);
+    // Analytics only on mount for this diagnosis card instance
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once on mount
+  }, []);
 
   function onCtaClick() {
     captureEvent("cta_clicked", {
       session_id: sessionId,
       cta_type: method,
       diagnosis_category: diagnosisCategory,
+      severity_code: severityCode || "",
     });
     setOpen(true);
   }
@@ -86,8 +85,18 @@ export function LeadCapture({
     }
   }
 
+  const promptText = isUrgent ? t("promptUrgent") : t("prompt");
+  const shellClass = [
+    "lead-capture",
+    isUrgent ? "lead-urgent" : "",
+    done ? "lead-success" : "",
+    open && !done ? "lead-form" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   if (done) {
-    // Exact EN/JA copy with <url></url> rich placeholder for the verify link
+    // Optional verify blurb after success (primary verify link lives on DiagnosisCard)
     const verifyParts = verifyLink
       ? t.rich("verifyBlurb", {
           url: () => (
@@ -99,7 +108,7 @@ export function LeadCapture({
       : null;
 
     return (
-      <div className="lead-capture lead-success" role="status">
+      <div className={shellClass} role="status">
         <p className="lead-success-main">{t("success")}</p>
         {verifyParts ? <p className="lead-verify-blurb">{verifyParts}</p> : null}
       </div>
@@ -108,8 +117,8 @@ export function LeadCapture({
 
   if (!open) {
     return (
-      <div className="lead-capture">
-        <p className="lead-prompt">{t("prompt")}</p>
+      <div className={shellClass}>
+        <p className="lead-prompt">{promptText}</p>
         <button type="button" className="btn btn-primary lead-cta" onClick={onCtaClick}>
           {t("cta")}
         </button>
@@ -118,8 +127,8 @@ export function LeadCapture({
   }
 
   return (
-    <form className="lead-capture lead-form" onSubmit={onSubmit}>
-      <p className="lead-prompt">{t("prompt")}</p>
+    <form className={shellClass} onSubmit={onSubmit}>
+      <p className="lead-prompt">{promptText}</p>
       <div className="lead-method-row" role="group" aria-label={t("methodLabel")}>
         <button
           type="button"
@@ -145,6 +154,7 @@ export function LeadCapture({
         required
         autoComplete={method === "email" ? "email" : "off"}
         aria-label={method === "email" ? t("email") : t("line")}
+        autoFocus={isUrgent}
       />
       {error ? <div className="lead-error">{error}</div> : null}
       <button className="btn btn-primary" type="submit" disabled={loading || !value.trim()}>
